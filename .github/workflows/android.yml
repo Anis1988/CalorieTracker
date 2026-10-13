@@ -28,8 +28,8 @@ jobs:
         run: npm run build
         env:
           # Optional: your site's address, filled in on the app's first screen (GitHub → Settings → Secrets and
-          # variables → Actions → Variables → CALORIE_URL). Without it, the app simply asks for it once.
-          VITE_API_BASE: ${{ vars.CALORIE_URL }}
+          # variables → Actions → Variables → CALORIE_URL). It can also be changed in the app (Settings → This device).
+          VITE_API_BASE: ${{ vars.CALORIE_URL || 'https://calorie-tracker-roza.vercel.app' }}
           VITE_APP_BUILD: ${{ github.run_number }} # the app compares this with the release page to offer updates
       - name: Copy them into the Android project
         run: npx cap sync android
