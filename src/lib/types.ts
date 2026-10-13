@@ -79,7 +79,74 @@ export interface Settings {
   photos: { keep: boolean; days: number };
   display: { theme: 'auto' | 'light' | 'dark'; weekStart: 0 | 1; healthScore: boolean; macros: boolean };
   water: { on: boolean; step: number };
+  beauty: Beauty;
 }
+
+// ---------- 💄 Beauty ----------
+export type SkinType = 'dry' | 'oily' | 'combination' | 'normal';
+export interface Beauty {
+  on: boolean; // show the Food | Beauty switch
+  skinType: SkinType;
+  sensitive: boolean;
+  concerns: string[];
+  avoid: string[]; // ingredients to avoid (allergies, things that don't suit you)
+  tone: '' | 'fair' | 'light' | 'medium' | 'tan' | 'deep';
+  undertone: '' | 'cool' | 'warm' | 'neutral' | 'olive';
+  fragranceFree: boolean;
+  vegan: boolean;
+  pregnancy: boolean;
+}
+export const SKIN_TYPES: { id: SkinType; label: string; hint: string }[] = [
+  { id: 'dry', label: 'Dry', hint: 'Feels tight, flaky patches' },
+  { id: 'oily', label: 'Oily', hint: 'Shiny, especially by midday' },
+  { id: 'combination', label: 'Combination', hint: 'Oily T-zone, dry cheeks' },
+  { id: 'normal', label: 'Normal', hint: 'Mostly comfortable' },
+];
+export const CONCERNS = ['Acne / breakouts', 'Redness / rosacea', 'Dark spots', 'Fine lines', 'Dullness', 'Large pores', 'Eczema', 'Dark circles', 'Dehydration', 'Blackheads'];
+export const AVOID_IDEAS = ['Fragrance', 'Alcohol', 'Essential oils', 'Parabens', 'Sulfates', 'Silicones', 'Retinol', 'Nuts', 'Coconut oil', 'Mineral oil', 'Lanolin', 'Chemical sunscreen filters', 'Talc', 'Formaldehyde releasers'];
+export const TONES: { id: Beauty['tone']; label: string; color: string }[] = [
+  { id: 'fair', label: 'Fair', color: '#f6dccb' }, { id: 'light', label: 'Light', color: '#ecc5a6' }, { id: 'medium', label: 'Medium', color: '#c99a73' },
+  { id: 'tan', label: 'Tan', color: '#a6764f' }, { id: 'deep', label: 'Deep', color: '#6b452c' },
+];
+export const UNDERTONES: { id: Beauty['undertone']; label: string; hint: string }[] = [
+  { id: 'cool', label: 'Cool', hint: 'Veins look blue, silver suits you' },
+  { id: 'warm', label: 'Warm', hint: 'Veins look green, gold suits you' },
+  { id: 'neutral', label: 'Neutral', hint: 'A bit of both' },
+  { id: 'olive', label: 'Olive', hint: 'Greenish-grey hint' },
+];
+
+export type Verdict = 'good' | 'ok' | 'avoid';
+/** What the AI found for a beauty product, checked against your skin profile. */
+export interface BeautyCheck {
+  id: string;
+  brand: string;
+  product: string;
+  category: string; // e.g. Foundation, Moisturizer, Serum…
+  verdict: Verdict;
+  score: number; // 1..10 for you
+  summary: string;
+  good: { name: string; why: string }[];
+  watch: { name: string; why: string }[];
+  avoidHits: string[]; // from your avoid list (free text check, the AI can't override it)
+  ingredients: string[];
+  ingredientsFrom: 'label' | 'known' | 'none';
+  howToUse: string[];
+  shade: string; // shade advice for face makeup, else ''
+  pao: string; // period after opening on the jar, e.g. "12M", else ''
+  by: string;
+  cached?: boolean;
+  note?: string;
+  createdAt: string;
+}
+export type ShelfStatus = 'checked' | 'wishlist' | 'using' | 'loved' | 'nope';
+export const SHELF_STATUS: { id: ShelfStatus; label: string; icon: string }[] = [
+  { id: 'using', label: 'Using', icon: '✨' },
+  { id: 'loved', label: 'Loved it', icon: '💖' },
+  { id: 'wishlist', label: 'Want to try', icon: '🛍️' },
+  { id: 'nope', label: 'Didn’t suit me', icon: '🙅' },
+  { id: 'checked', label: 'Just checked', icon: '🔍' },
+];
+export interface ShelfItem extends BeautyCheck { status: ShelfStatus; photo?: string; openedOn?: string; paoMonths?: number; myNotes?: string }
 
 export const DEFAULT_SETTINGS: Settings = {
   profile: { sex: 'male', age: 35, heightCm: 175, weightKg: 80, activity: 'light', goal: 'maintain', pace: 0.5, goalWeightKg: null },
@@ -90,6 +157,7 @@ export const DEFAULT_SETTINGS: Settings = {
   photos: { keep: true, days: 90 },
   display: { theme: 'auto', weekStart: 1, healthScore: true, macros: true },
   water: { on: true, step: 250 },
+  beauty: { on: true, skinType: 'normal', sensitive: false, concerns: [], avoid: [], tone: '', undertone: '', fragranceFree: false, vegan: false, pregnancy: false },
 };
 
 /** Settings saved by an older version: anything missing gets its default. */
@@ -105,6 +173,7 @@ export function withDefaults(s: Partial<Settings> | null | undefined): Settings 
     photos: { ...d.photos, ...o.photos },
     display: { ...d.display, ...o.display },
     water: { ...d.water, ...o.water },
+    beauty: { ...d.beauty, ...o.beauty },
   };
 }
 

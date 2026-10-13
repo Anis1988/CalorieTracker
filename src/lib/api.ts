@@ -1,5 +1,5 @@
 import { apiUrl, getServer, isNative } from './native';
-import type { Analysis, DayData, Entry, Favorite, Provider, Settings, Status } from './types';
+import type { Analysis, BeautyCheck, DayData, Entry, Favorite, Provider, Settings, ShelfItem, Status } from './types';
 
 /** The access code is kept on this device only (Settings → This device). */
 const KEY = 'ct.code';
@@ -36,6 +36,10 @@ export const api = {
   weight: (date: string, kg: number) => call<{ ok: true }>('/api/body', send('POST', { weight: { date, kg } })),
   deleteWeight: (date: string) => call<{ ok: true }>(`/api/body?weight=${date}`, { method: 'DELETE' }),
   favorite: (favorite: Favorite) => call<{ ok: true }>('/api/body', send('POST', { favorite })),
+  shelf: () => call<{ shelf: ShelfItem[] }>('/api/beauty'),
+  checkProduct: (b: { images: string[]; note?: string; model?: Provider }) => call<Omit<BeautyCheck, 'id' | 'createdAt'>>('/api/beauty', send('POST', { check: b })),
+  saveShelf: (item: ShelfItem, photo?: string) => call<{ item: ShelfItem }>('/api/beauty', send('POST', { item, photo })),
+  deleteShelf: (id: string) => call<{ ok: true }>(`/api/beauty?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   deleteFavorite: (id: string) => call<{ ok: true }>(`/api/body?favorite=${id}`, { method: 'DELETE' }),
 };
 

@@ -22,6 +22,9 @@
         try { t = localStorage.getItem('ct.theme') || 'auto'; } catch (e) {}
         var dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
         document.documentElement.classList.toggle('dark', dark);
+        var sp = 'food';
+        try { sp = localStorage.getItem('ct.space') || 'food'; } catch (e) {}
+        document.documentElement.classList.toggle('beauty', sp === 'beauty');
       })();
     </script>
   </head>

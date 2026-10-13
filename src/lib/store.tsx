@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError } from './api';
 import { addDays, todayStr } from './date';
-import type { DayData, Entry, Favorite, Settings, Status } from './types';
+import type { DayData, Entry, Favorite, Settings, ShelfItem, Status } from './types';
 import { DEFAULT_SETTINGS } from './types';
 
 /** Everything the screens share. Changes show at once and are saved in the background (one copy on the server). */
@@ -14,6 +14,9 @@ interface Store {
   days: Record<string, DayData>;
   weights: Record<string, number>;
   favorites: Favorite[];
+  shelf: ShelfItem[];
+  saveShelf: (x: ShelfItem, photo?: string) => Promise<ShelfItem>;
+  deleteShelf: (id: string) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
   loadRange: (from: string, to: string) => Promise<void>;
   saveEntry: (e: Entry, photo?: string, oldDate?: string) => Promise<Entry>;
@@ -41,6 +44,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [days, setDays] = useState<Record<string, DayData>>({});
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [favorites, setFavorites] = useState<Favorite[]>([]);
+  const [shelf, setShelf] = useState<ShelfItem[]>([]);
   const loaded = useRef<{ from: string; to: string } | null>(null);
   const photos = useRef(new Map<string, Promise<string | null>>());
 
@@ -62,7 +66,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [s, b] = await Promise.all([api.settings(), api.body()]);
+      const [s, b, sh] = await Promise.all([api.settings(), api.body(), api.shelf().catch(() => ({ shelf: [] as ShelfItem[] }))]);
+      setShelf(sh.shelf);
       setSettings(s.settings);
       setStatus(s.status);
       setWeights(b.weights);
@@ -92,7 +97,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<Store>(() => ({
-    ready, locked, error, settings, status, days, weights, favorites,
+    ready, locked, error, settings, status, days, weights, favorites, shelf,
     refresh, loadRange,
     unlock: () => { setLocked(false); void refresh(); },
     saveSettings: async (s) => {
@@ -126,13 +131,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveWeight: async (date, kg) => { setWeights((w) => ({ ...w, [date]: kg })); await api.weight(date, kg).catch(fail); },
     deleteWeight: async (date) => { setWeights((w) => { const n = { ...w }; delete n[date]; return n; }); await api.deleteWeight(date).catch(fail); },
     saveFavorite: async (f) => { setFavorites((l) => [...l.filter((x) => x.id !== f.id), f].sort((a, b) => a.title.localeCompare(b.title))); await api.favorite(f).catch(fail); },
+    saveShelf: async (x, photo) => {
+      const r = await api.saveShelf(x, photo).catch(fail);
+      setShelf((l) => [r.item, ...l.filter((y) => y.id !== x.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      if (photo && r.item.photo) photos.current.set(r.item.photo, Promise.resolve(photo));
+      return r.item;
+    },
+    deleteShelf: async (id) => { setShelf((l) => l.filter((x) => x.id !== id)); await api.deleteShelf(id).catch(fail); },
     deleteFavorite: async (id) => { setFavorites((l) => l.filter((x) => x.id !== id)); await api.deleteFavorite(id).catch(fail); },
     photo: (id) => {
       let p = photos.current.get(id);
       if (!p) { p = api.photo(id).then((r) => r.photo).catch(() => null); photos.current.set(id, p); }
       return p;
     },
-  }), [ready, locked, error, settings, status, days, weights, favorites, refresh, loadRange]);
+  }), [ready, locked, error, settings, status, days, weights, favorites, shelf, refresh, loadRange]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

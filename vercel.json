@@ -6,6 +6,9 @@
   "functions": {
     "api/analyze.ts": {
       "maxDuration": 120
+    },
+    "api/beauty.ts": {
+      "maxDuration": 120
     }
   },
   "rewrites": [

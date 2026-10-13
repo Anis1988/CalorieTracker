@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import type { DayData, Entry, Favorite, Provider, Settings } from '../src/lib/types.js';
+import type { DayData, Entry, Favorite, Provider, Settings, ShelfItem } from '../src/lib/types.js';
 import { withDefaults } from '../src/lib/types.js';
 import { LocalStore } from './localStore.js';
 
@@ -10,6 +10,7 @@ import { LocalStore } from './localStore.js';
  *   ct:water:YYYY-MM       hash  date -> ml
  *   ct:weight              hash  date -> kg
  *   ct:favs                hash  id -> Favorite
+ *   ct:shelf               hash  id -> ShelfItem    (💄 beauty products you checked or own)
  *   ct:photo:<id>          small copy of a meal photo (kept Settings → Photos days)
  *   ct:cache:<hash>        an AI answer (the same photo/words are never paid for twice)
  *   ct:ai:<day>:<provider> AI reads today
@@ -112,6 +113,17 @@ export const delWeight = async (date: string) => void (await need().hdel('ct:wei
 export const favorites = async () => Object.values((await need().hgetall<Record<string, Favorite>>('ct:favs')) ?? {}).sort((a, b) => a.title.localeCompare(b.title));
 export const putFavorite = async (f: Favorite) => void (await need().hset('ct:favs', { [f.id]: f }));
 export const delFavorite = async (id: string) => void (await need().hdel('ct:favs', id));
+
+// ---------- 💄 beauty shelf ----------
+export const shelf = async () => Object.values((await need().hgetall<Record<string, ShelfItem>>('ct:shelf')) ?? {}).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export const getShelfItem = async (id: string) => (await need().hget<ShelfItem>('ct:shelf', id)) ?? null;
+export const putShelfItem = async (x: ShelfItem) => void (await need().hset('ct:shelf', { [x.id]: x }));
+export async function delShelfItem(id: string) {
+  const r = need();
+  const x = await getShelfItem(id);
+  await r.hdel('ct:shelf', id);
+  if (x?.photo) await r.del(`ct:photo:${x.photo}`);
+}
 
 // ---------- AI: daily limits and the answer cache ----------
 const today = () => new Date().toISOString().slice(0, 10);
