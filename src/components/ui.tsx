@@ -1,0 +1,148 @@
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useStore } from '../lib/store';
+
+export function Icon({ d, className = 'h-5 w-5', stroke = 1.8 }: { d: string; className?: string; stroke?: number }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true"><path d={d} /></svg>;
+}
+export const ICONS = {
+  today: 'M12 3a9 9 0 1 0 9 9M12 7v5l3 2M16 3h5v5M21 3l-6 6',
+  history: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  weight: 'M5 7h14l2 13H3zM9 7a3 3 0 0 1 6 0M12 12l2-2',
+  settings: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
+  help: 'M12 17h.01M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
+  pen: 'M4 20h4L19 9l-4-4L4 16zM13 7l4 4',
+  barcode: 'M4 6v12M7 6v12M10 6v12M14 6v12M17 6v12M20 6v12',
+  star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z',
+  plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  close: 'M6 6l12 12M18 6L6 18',
+  left: 'M15 6l-6 6 6 6',
+  right: 'M9 6l6 6-6 6',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
+  spark: 'M12 3l1.8 4.6 4.7 1.9-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.9z',
+  copy: 'M8 8h12v12H8zM4 16V4h12',
+};
+
+export function Toggle({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
+  return <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} onClick={() => onChange(!on)} className="switch"><span /></button>;
+}
+
+/** Segmented switch: a glass thumb slides to the picked option. */
+export function Seg<T extends string | number>({ options, value, onChange, label, className = '' }: { options: [T, string][]; value: T; onChange: (v: T) => void; label: string; className?: string }) {
+  const i = Math.max(0, options.findIndex(([v]) => v === value));
+  return (
+    <div className={`seg ${className}`} role="tablist" aria-label={label} style={{ '--i': i, '--n': options.length } as CSSProperties}>
+      <span className="thumb" aria-hidden="true" />
+      {options.map(([v, l]) => <button key={String(v)} type="button" role="tab" aria-selected={v === value} onClick={() => onChange(v)}>{l}</button>)}
+    </div>
+  );
+}
+
+/** A Settings row: words on the left, the control on the right (wraps on narrow phones). */
+export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-2">
+      <div className="min-w-0 flex-1 basis-44">
+        <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">{label}</p>
+        {hint && <p className="text-xs muted">{hint}</p>}
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
+/** A number box that only saves when you leave it (so typing "1" on the way to "150" isn't saved). */
+export function NumberBox({ value, onChange, min = 0, max = 100000, step = 1, label, unit, width = 'w-24' }: { value: number; onChange: (n: number) => void; min?: number; max?: number; step?: number; label: string; unit?: string; width?: string }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const done = () => {
+    const n = Number(text.replace(',', '.'));
+    if (!Number.isFinite(n) || text.trim() === '') return setText(String(value));
+    const v = Math.min(max, Math.max(min, Math.round(n / step) * step));
+    setText(String(+v.toFixed(2)));
+    if (v !== value) onChange(+v.toFixed(2));
+  };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <input className={`input num ${width} text-right`} inputMode="decimal" value={text} aria-label={label} onChange={(e) => setText(e.target.value)} onBlur={done} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+      {unit && <span className="text-sm muted">{unit}</span>}
+    </span>
+  );
+}
+
+/** A section that opens and closes. */
+export function Fold({ title, subtitle, icon, open: start = false, children }: { title: string; subtitle?: string; icon?: string; open?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(start);
+  return (
+    <section className="card !p-0">
+      <button className="tap flex w-full items-center gap-3 rounded-[26px] px-4 py-3.5 text-left" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {icon && <span className="text-xl" aria-hidden="true">{icon}</span>}
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[17px] font-semibold text-stone-900 dark:text-stone-50">{title}</span>
+          {subtitle && <span className="block truncate text-xs muted">{subtitle}</span>}
+        </span>
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-5 w-5 shrink-0 text-stone-400 transition-transform duration-500 [transition-timing-function:var(--spring)] ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && <div className="rise space-y-1 border-t border-stone-900/[0.07] px-4 pb-4 pt-2 dark:border-white/[0.08]">{children}</div>}
+    </section>
+  );
+}
+
+/** A panel that slides up from the bottom on phones (centred on big screens). */
+export function Sheet({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-stone-950/40 backdrop-blur-md animate-[fade_.25s_ease-out] sm:items-center" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+        className={`max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-[30px] border border-white/70 bg-[#f6f8f2]/95 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl animate-[pop_.45s_cubic-bezier(.34,1.3,.64,1)] dark:border-white/10 dark:bg-[#0d1110]/95 dark:shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] sm:rounded-[30px] sm:pb-6 ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}>
+        <div className="mx-auto -mt-1 mb-3 h-1.5 w-10 rounded-full bg-stone-900/15 dark:bg-white/20 sm:hidden" aria-hidden="true" />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          <button className="btn h-10 w-10 !min-h-0 !rounded-full !p-0" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ---------- messages ----------
+type Toast = { id: number; kind: 'ok' | 'err' | 'info'; text: string };
+let toasts: Toast[] = [];
+const subs = new Set<(t: Toast[]) => void>();
+export function toast(kind: Toast['kind'], text: string) {
+  const t = { id: Date.now() + Math.random(), kind, text };
+  toasts = [...toasts, t];
+  subs.forEach((f) => f(toasts));
+  setTimeout(() => { toasts = toasts.filter((x) => x.id !== t.id); subs.forEach((f) => f(toasts)); }, kind === 'err' ? 7000 : 3200);
+}
+export function Toasts() {
+  const [list, setList] = useState<Toast[]>([]);
+  useEffect(() => { subs.add(setList); return () => void subs.delete(setList); }, []);
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-[max(12px,env(safe-area-inset-top))] z-50 flex flex-col items-center gap-2 px-4" aria-live="polite">
+      {list.map((t) => (
+        <div key={t.id} className={`pointer-events-auto max-w-md rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_40px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl animate-[popin_.45s_cubic-bezier(.34,1.56,.64,1)] ${t.kind === 'err' ? 'bg-red-700/90' : t.kind === 'ok' ? 'bg-lime-800/90' : 'bg-stone-800/90'}`}>{t.text}</div>
+      ))}
+    </div>
+  );
+}
+
+/** A meal's small photo, fetched when shown (kept on the server for Settings → Photos days). */
+export function Thumb({ id, src, className = 'h-14 w-14', fallback = '🍽️' }: { id?: string; src?: string; className?: string; fallback?: string }) {
+  const st = useStore();
+  const [url, setUrl] = useState<string | null>(src ?? null);
+  useEffect(() => { if (!src && id) void st.photo(id).then(setUrl); }, [id, src, st]);
+  return url
+    ? <img src={url} alt="" className={`${className} shrink-0 rounded-2xl object-cover`} />
+    : <span className={`${className} flex shrink-0 items-center justify-center rounded-2xl bg-lime-500/10 text-2xl`} aria-hidden="true">{fallback}</span>;
+}

@@ -1,0 +1,15 @@
+# Working on this repo
+
+- **Keep the Guide tab up to date.** Every change that adds or changes a user-visible feature must also update `src/pages/Guide.tsx` in the same commit: plain everyday words, and a live example built from the app's own components (made-up data, no working buttons).
+- Push directly to `main` (the owner deploys from it via Vercel).
+- Do not add automated tests unless asked.
+- New features: describe them and get the owner's OK before building. Bug fixes can go straight in.
+- Phone-friendly is required: check a 390px-wide layout for any UI change, in light and dark.
+- Everything the owner can change lives in Settings (`Settings` in `src/lib/types.ts`, `withDefaults` for old saves, `src/pages/Settings.tsx`). Settings are stored on the server (`ct:settings`), the same on every device.
+- Hosting is Vercel: `api/*.ts` are the server functions (Web `GET`/`POST` handlers), `server/` the shared code, Upstash Redis the storage (keys in `server/store.ts`). Server imports must end in `.js`. Vercel Hobby allows 12 functions; there are 4 (`analyze`, `entries`, `body`, `settings`). Request limit 4.5 MB: photos are shrunk on the device first (`src/lib/image.ts`: 1280px for the AI, 360px kept).
+- Access: one owner, `APP_ACCESS_TOKEN` (header `x-access-token`, kept on the device as `ct.code`), same-origin + rate limit (`server/guard.ts`).
+- 🤖 AI (owner's rule, like the other apps): free Gemini first, Claude (paid) as the backup when Gemini is over its daily limit, not set up or fails (`analyze` in `server/ai.ts`; switchable in Settings → AI). Each AI has its own daily limit (`ct:ai:<day>:<provider>`). The same photo/words are never paid twice (`ct:cache:<sha256>`, `ai.rememberDays`). Barcodes (Open Food Facts, called from the device), favorites and recent meals never use the AI. One AI read gives items + health score + notes + tips.
+- Nutrition maths in `src/lib/nutrition.ts` (Mifflin–St Jeor, activity factors, 7,700 kcal/kg, floors 1,500/1,200, macro plans, units). The newest logged weight updates `profile.weightKg`.
+- Dates are the phone's local days (`src/lib/date.ts`); entries live in one hash per month (`ct:month:YYYY-MM`), water per month, weights and favorites in one hash each.
+- Look: "Fresh Glass" (lime #bef264 → amber #fbbf24 accent, night #07090c / light #f3f5ef, glass `.card`, `.tap` effect, sliding `Seg`/tab pill, `.switch`). Light/dark: `darkMode: 'class'`, Settings → Look (auto follows the phone; `ct.theme` applied before first paint in `index.html`). Macro colours checked for colour-blind readers: protein `--protein`, carbs `--carbs`, fat `--fat` (different steps in dark), always shown with their name/number. Motion only transform/opacity, off under `prefers-reduced-motion`.
+- The app gives estimates, never medical advice.
