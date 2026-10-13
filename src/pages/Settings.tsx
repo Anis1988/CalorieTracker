@@ -46,7 +46,7 @@ export function Settings() {
           </Field>
         )}
         <Field label="Goal weight" hint="Optional: shown on the Weight chart.">
-          <NumberBox label="Goal weight" value={s.profile.goalWeightKg ? weightNum(s.profile.goalWeightKg, u) : 0} step={0.1} max={900} unit={u.weight} onChange={(n) => set('profile', { goalWeightKg: n ? Math.round(kg(n) * 10) / 10 : null })} />
+          <NumberBox blankZero label="Goal weight" value={s.profile.goalWeightKg ? weightNum(s.profile.goalWeightKg, u) : 0} step={0.1} max={900} unit={u.weight} onChange={(n) => set('profile', { goalWeightKg: n ? Math.round(kg(n) * 10) / 10 : null })} />
         </Field>
         <p className="rounded-2xl p-3 text-xs muted" style={{ background: 'var(--trk)' }}>Your body uses about <b>{kcalText(bmr(s.profile), u)}</b> at rest and <b>{kcalText(tdee(s.profile), u)}</b> on a normal day. Suggested goal: <b>{kcalText(autoCalories(s.profile), u)}</b> a day.</p>
       </Fold>

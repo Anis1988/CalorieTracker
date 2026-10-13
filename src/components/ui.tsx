@@ -56,19 +56,21 @@ export function Field({ label, hint, children }: { label: string; hint?: ReactNo
 }
 
 /** A number box that only saves when you leave it (so typing "1" on the way to "150" isn't saved). */
-export function NumberBox({ value, onChange, min = 0, max = 100000, step = 1, label, unit, width = 'w-24' }: { value: number; onChange: (n: number) => void; min?: number; max?: number; step?: number; label: string; unit?: string; width?: string }) {
-  const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
+export function NumberBox({ value, onChange, min = 0, max = 100000, step = 1, label, unit, width = 'w-24', blankZero }: { value: number; onChange: (n: number) => void; min?: number; max?: number; step?: number; label: string; unit?: string; width?: string; blankZero?: boolean }) {
+  const show = (n: number) => (blankZero && !n ? '' : String(n));
+  const [text, setText] = useState(show(value));
+  useEffect(() => setText(show(value)), [value]); // eslint-disable-line react-hooks/exhaustive-deps
   const done = () => {
+    if (blankZero && text.trim() === '') { if (value) onChange(0); return; }
     const n = Number(text.replace(',', '.'));
-    if (!Number.isFinite(n) || text.trim() === '') return setText(String(value));
+    if (!Number.isFinite(n) || text.trim() === '') return setText(show(value));
     const v = Math.min(max, Math.max(min, Math.round(n / step) * step));
     setText(String(+v.toFixed(2)));
     if (v !== value) onChange(+v.toFixed(2));
   };
   return (
     <span className="inline-flex items-center gap-1.5">
-      <input className={`input num ${width} text-right`} inputMode="decimal" value={text} aria-label={label} onChange={(e) => setText(e.target.value)} onBlur={done} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+      <input className={`input num ${width} text-right`} inputMode="decimal" value={text} placeholder={blankZero ? 'none' : undefined} aria-label={label} onChange={(e) => setText(e.target.value)} onBlur={done} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
       {unit && <span className="text-sm muted">{unit}</span>}
     </span>
   );
