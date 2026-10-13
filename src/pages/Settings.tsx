@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../lib/store';
 import { api, errText, setCode } from '../lib/api';
+import { getServer, isNative, setServer, shareText } from '../lib/native';
 import { todayStr } from '../lib/date';
 import { ACTIVITIES, MACRO_PLANS, autoCalories, bmr, kcalText, kgToLb, lbToKg, macroGoals, tdee, weightNum, waterText } from '../lib/nutrition';
 import { CLAUDE_MODELS, GEMINI_MODELS, type Settings as S } from '../lib/types';
@@ -130,6 +131,7 @@ export function Settings() {
 
       <Fold icon="🔑" title="This device" subtitle="Your access code">
         <p className="text-sm muted">The access code is saved on this phone only. Signing out removes it here; your meals stay safe on the server.</p>
+        {isNative() && <SiteAddress />}
         <button className="btn mt-2" onClick={() => { setCode(''); location.reload(); }}>Sign out on this device</button>
       </Fold>
     </div>
@@ -151,6 +153,7 @@ function DataFold() {
   const [busy, setBusy] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const download = (name: string, type: string, text: string) => {
+    if (isNative()) return void shareText(name, text).catch((e) => toast('err', errText(e)));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type }));
     a.download = name;
@@ -195,5 +198,18 @@ function DataFold() {
         </div>
       </div>
     </Fold>
+  );
+}
+
+/** Android app: the website it talks to (the same meals and settings as in the browser). */
+function SiteAddress() {
+  const [v, setV] = useState(getServer());
+  return (
+    <div className="space-y-1.5 pt-2">
+      <label className="block text-sm font-semibold">Your site’s address
+        <input className="input mt-1 w-full" type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" value={v} onChange={(e) => setV(e.target.value)} />
+      </label>
+      <button className="btn" disabled={!v.trim() || v.trim() === getServer()} onClick={() => { setServer(v); location.reload(); }}>Save address</button>
+    </div>
   );
 }

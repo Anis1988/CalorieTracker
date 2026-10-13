@@ -9,6 +9,9 @@ import { History } from './pages/History';
 import { Weight } from './pages/Weight';
 import { Settings } from './pages/Settings';
 import { Guide } from './pages/Guide';
+import { App as NativeApp } from '@capacitor/app';
+import { AppUpdateCheck } from './components/AppUpdate';
+import { DEFAULT_SERVER, getServer, isNative, setServer } from './lib/native';
 
 type Tab = 'today' | 'history' | 'weight' | 'settings' | 'guide';
 // Bottom bar: 4 tabs and the big camera button in the middle (slot 2).
@@ -53,6 +56,16 @@ function Main() {
     return () => window.removeEventListener('hashchange', f);
   }, []);
   const go = (t: Tab) => { location.hash = `#/${t}`; window.scrollTo(0, 0); };
+  // Android back button: close an open panel, else go back to Today, else leave the app (it stays in the background).
+  useEffect(() => {
+    if (!isNative()) return;
+    const h = NativeApp.addListener('backButton', () => {
+      if (document.querySelector('[role=dialog]')) window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      else if (tabOf() !== 'today') { location.hash = '#/today'; window.scrollTo(0, 0); }
+      else void NativeApp.minimizeApp();
+    });
+    return () => void h.then((x) => x.remove());
+  }, []);
 
   if (!st.ready) return <Shell><p className="mt-20 text-center text-sm muted"><span className="spinner" /> Loading…</p></Shell>;
   if (st.locked || !getCode()) return <Shell><Lock /></Shell>;
@@ -61,7 +74,7 @@ function Main() {
   return (
     <div className="min-h-screen pb-32">
       <Glow />
-      <header className="sticky top-0 z-30 border-b border-stone-900/5 bg-[#f3f5ef]/70 backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#07090c]/70" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      <header className="sticky top-0 z-30 border-b border-stone-900/5 bg-[#f3f5ef]/70 backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#07090c]/70" style={{ paddingTop: 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))' }}>
         <div className="mx-auto flex max-w-xl items-center gap-2.5 px-4 py-2.5">
           <img src="/icon.svg" alt="" className="h-8 w-8" />
           <span className="font-display text-xl font-semibold tracking-tight">Calories</span>
@@ -70,11 +83,12 @@ function Main() {
       </header>
       {st.error && <p className="mx-auto mt-3 max-w-xl px-4"><span className="card block border-red-300 !py-3 text-sm text-red-800 dark:text-red-200">{st.error} <button className="font-bold underline" onClick={() => void st.refresh()}>Try again</button></span></p>}
       <main key={tab} className="rise mx-auto max-w-xl px-4 py-4">
+        <AppUpdateCheck />
         {tab === 'today' ? <Today date={date} setDate={setDate} add={add} setAdd={setAdd} />
           : tab === 'history' ? <History openDay={(d) => { setDate(d); go('today'); }} />
           : tab === 'weight' ? <Weight /> : tab === 'settings' ? <Settings /> : <Guide />}
       </main>
-      <nav aria-label="Tabs" className="glass fixed inset-x-3 z-30 mx-auto flex max-w-xl rounded-[28px] p-1.5" style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+      <nav aria-label="Tabs" className="glass fixed inset-x-3 z-30 mx-auto flex max-w-xl rounded-[28px] p-1.5" style={{ bottom: 'calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
         <span aria-hidden="true" className="tabpill" style={{ '--i': slot, opacity: tab === 'guide' ? 0 : 1 } as CSSProperties} />
         {[0, 1, 2, 3, 4].map((i) => {
           const t = TABS.find((x) => x.slot === i);
@@ -113,11 +127,13 @@ function Shell({ children }: { children: React.ReactNode }) {
 function Lock() {
   const st = useStore();
   const [code, setText] = useState('');
+  const [site, setSite] = useState(getServer() || DEFAULT_SERVER);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const go = async () => {
     setBusy(true);
     setErr('');
+    if (isNative()) setServer(site);
     setCode(code.trim());
     try { await api.settings(); st.unlock(); } catch (e) { setCode(''); setErr(errText(e)); }
     setBusy(false);
@@ -126,11 +142,17 @@ function Lock() {
     <div className="card rise space-y-3">
       <h1 className="text-xl font-semibold">Welcome 👋</h1>
       <p className="text-sm muted">Snap a photo of your food: the AI lists everything on the plate with its calories, protein, carbs and fat, and keeps track for you.</p>
+      {isNative() && (
+        <label className="block text-sm font-semibold">Your site’s address
+          <input className="input mt-1 w-full" type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" placeholder="e.g. calorietracker-you.vercel.app" value={site} onChange={(e) => setSite(e.target.value)} />
+          <span className="mt-1 block text-xs font-normal muted">The address you open the app at in the browser (Vercel → your project → Domains).</span>
+        </label>
+      )}
       <label className="block text-sm font-semibold">Access code
-        <input className="input mt-1 w-full" type="password" autoComplete="current-password" value={code} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && code.trim() && void go()} />
+        <input className="input mt-1 w-full" type="password" autoComplete="current-password" value={code} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && code.trim() && (!isNative() || site.trim()) && void go()} />
       </label>
       {err && <p className="text-sm text-red-700 dark:text-red-300">{err}</p>}
-      <button className="btn-primary w-full" disabled={busy || !code.trim()} onClick={() => void go()}>{busy ? <span className="spinner" /> : 'Open'}</button>
+      <button className="btn-primary w-full" disabled={busy || !code.trim() || (isNative() && !site.trim())} onClick={() => void go()}>{busy ? <span className="spinner" /> : 'Open'}</button>
       <p className="text-xs muted">It’s the APP_ACCESS_TOKEN you set in Vercel. It’s kept on this device only.</p>
     </div>
   );

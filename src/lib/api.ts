@@ -1,3 +1,4 @@
+import { apiUrl, getServer, isNative } from './native';
 import type { Analysis, DayData, Entry, Favorite, Provider, Settings, Status } from './types';
 
 /** The access code is kept on this device only (Settings → This device). */
@@ -8,9 +9,15 @@ export const setCode = (c: string) => { try { if (c) localStorage.setItem(KEY, c
 export class ApiError extends Error { constructor(message: string, public status: number) { super(message); } }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', 'x-access-token': getCode(), ...init.headers } });
-  const j = (await res.json().catch(() => ({}))) as T & { error?: string };
-  if (!res.ok) throw new ApiError(j.error ?? `Something went wrong (${res.status})`, res.status);
+  if (isNative() && !getServer()) throw new ApiError('Type your site’s address first (the one you open in the browser).', 401);
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path), { ...init, headers: { 'Content-Type': 'application/json', 'x-access-token': getCode(), ...init.headers } });
+  } catch {
+    throw new ApiError(isNative() ? `Couldn’t reach ${getServer()}. Check your internet, and that this is your site’s address (Settings → This device).` : 'Couldn’t reach the server. Check your internet connection.', 0);
+  }
+  const j = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+  if (!res.ok || !j) throw new ApiError(j?.error ?? (isNative() && res.status === 404 ? `Your site wasn’t found at ${getServer()}. Use the address you open the app at in the browser.` : `Something went wrong (${res.status})`), res.status);
   return j;
 }
 const send = (method: string, body: unknown) => ({ method, body: JSON.stringify(body) });
