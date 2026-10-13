@@ -107,7 +107,8 @@ export function Guide() {
       </Fold>
 
       <Fold icon="📲" title="Put it on your phone">
-        <P><b>iPhone</b>: open the website in Safari, tap Share, then <b>Add to Home Screen</b>. <b>Android</b>: open it in Chrome, tap ⋮, then <b>Add to Home screen</b> (or Install app). It opens full-screen like an app, with its own icon.</P>
+        <P><b>Android app</b>: on your phone, open <b>github.com/Anis1988/CalorieTracker/releases</b>, tap <b>CalorieTracker.apk</b> under “Android app (latest)”, then open it and allow “Install unknown apps” for your browser if Android asks. The first time, type your site’s address (the one you open in the browser) and your access code. When a new version is ready, a banner offers the update; your meals stay.</P>
+        <P><b>iPhone</b>: open the website in Safari, tap Share, then <b>Add to Home Screen</b>. On Android you can also do this from Chrome (⋮ → <b>Add to Home screen</b>) instead of installing the app. It opens full-screen like an app, with its own icon.</P>
       </Fold>
 
       <Fold icon="🛠️" title="Setting it up (once)">
