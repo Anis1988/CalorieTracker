@@ -139,11 +139,11 @@ export function BeautyGuide() {
   return (
     <div className="mx-auto max-w-xl space-y-3">
       <h1 className="text-2xl font-semibold">Beauty guide</h1>
-      <p className="text-sm muted">How the 💄 Beauty side works. Tap a topic. (The 🍽️ Food side has its own guide.)</p>
+      <p className="text-sm muted">How the 💄 Beauty side works. Tap a topic. (🥗 Calories and 🍳 Cooking have their own guides.)</p>
 
       <Fold icon="✨" title="What it does" open>
         <P>Take a photo of a skincare or makeup product. The AI reads the brand, the product and its ingredients, and tells you if it’s good for <b>your</b> skin: <b>✅ Good match</b>, <b>🟡 OK</b> or <b>❌ Not for you</b>, with a score out of 10 and the reasons.</P>
-        <P>Switch between 🍽️ Food and 💄 Beauty with the switch at the top. Each side has its own menu and look; Settings are shared.</P>
+        <P>Switch between 🥗 Calories, 💄 Beauty and 🍳 Cooking with the switch at the top. Each side has its own menu and look; Settings are shared.</P>
         <Example caption="Made-up check of a moisturizer for dry skin."><BeautyResult r={EX} /></Example>
       </Fold>
 
@@ -169,7 +169,7 @@ export function BeautyGuide() {
       </Fold>
 
       <Fold icon="🤖" title="The AI and what it costs">
-        <P>The same rules as for food: free Gemini first, Claude (paid, about 1–2 cents) as the backup, both under the daily limits in Settings → AI. The same photos are remembered and never paid for twice. Each check is 1 AI read.</P>
+        <P>The AI picked in Settings → AI (the same one for all three sides): free Gemini, or Claude (paid, about 1–2 cents a check) for everything if you choose it, with the other as a backup if you like, all under the daily limits. The same photos are remembered and never paid for twice. Each check is 1 AI read.</P>
         <P>It’s guidance, not medical advice. If your skin reacts easily, try a new product on a small patch (inside of the arm) for a day first.</P>
       </Fold>
     </div>

@@ -80,7 +80,57 @@ export interface Settings {
   display: { theme: 'auto' | 'light' | 'dark'; weekStart: 0 | 1; healthScore: boolean; macros: boolean };
   water: { on: boolean; step: number };
   beauty: Beauty;
+  cooking: Cooking;
 }
+
+// ---------- 🍳 Cooking ----------
+export interface Cooking {
+  on: boolean; // show 🍳 Cooking in the switch
+  diet: string; // '' = anything
+  allergies: string[]; // always flagged (plain text check), never just left to the AI
+  dislikes: string[];
+  tools: string[]; // kitchen tools you have
+  servings: number;
+  maxTime: number; // minutes, 0 = any
+  skill: 'easy' | 'medium' | 'any';
+  count: number; // recipes per search
+  units: 'metric' | 'us';
+  staples: string[]; // always in the kitchen (salt, oil…)
+  fitDay: boolean; // aim at what's left of today's calories by default
+}
+export const DIETS = ['Vegetarian', 'Vegan', 'Pescatarian', 'High protein', 'Low carb', 'Keto', 'Mediterranean', 'Halal', 'Kosher', 'Gluten-free', 'Dairy-free'];
+export const ALLERGIES = ['Peanuts', 'Tree nuts', 'Gluten', 'Dairy', 'Eggs', 'Fish', 'Shellfish', 'Soy', 'Sesame'];
+export const TOOLS = ['Oven', 'Stove', 'Microwave', 'Air fryer', 'Blender', 'Slow cooker', 'Pressure cooker', 'Grill', 'Rice cooker'];
+export const CUISINES = ['Any', 'Mediterranean', 'Italian', 'Mexican', 'Middle Eastern', 'North African', 'Indian', 'Chinese', 'Japanese', 'Thai', 'American', 'French'];
+export const MEAL_KINDS = ['Any', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
+
+export interface RecipeIngredient { name: string; qty: number | null; unit: string; have: boolean; sub: string }
+export interface Recipe {
+  id: string;
+  title: string;
+  summary: string;
+  cuisine: string;
+  meal: string;
+  minutes: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  servings: number;
+  perServing: { calories: number; protein: number; carbs: number; fat: number; fiber: number; sugar: number };
+  ingredients: RecipeIngredient[];
+  steps: string[];
+  tips: string[];
+  tags: string[];
+  allergyHits: string[]; // from your allergies (free check)
+  by?: string;
+  // saved in Recipes
+  createdAt?: string;
+  fav?: boolean;
+  rating?: number; // 1..5
+  cooked?: number;
+  lastCooked?: string;
+  myNotes?: string;
+}
+export interface RecipeSearch { detected: string[]; recipes: Recipe[]; by: string; cached?: boolean; note?: string }
+export interface ShopItem { id: string; name: string; done: boolean; from?: string }
 
 // ---------- 💄 Beauty ----------
 export type SkinType = 'dry' | 'oily' | 'combination' | 'normal';
@@ -157,6 +207,7 @@ export const DEFAULT_SETTINGS: Settings = {
   photos: { keep: true, days: 90 },
   display: { theme: 'auto', weekStart: 1, healthScore: true, macros: true },
   water: { on: true, step: 250 },
+  cooking: { on: true, diet: '', allergies: [], dislikes: [], tools: ['Oven', 'Stove', 'Microwave'], servings: 2, maxTime: 0, skill: 'any', count: 6, units: 'metric', staples: ['Salt', 'Pepper', 'Olive oil', 'Water'], fitDay: false },
   beauty: { on: true, skinType: 'normal', sensitive: false, concerns: [], avoid: [], tone: '', undertone: '', fragranceFree: false, vegan: false, pregnancy: false },
 };
 
@@ -174,6 +225,7 @@ export function withDefaults(s: Partial<Settings> | null | undefined): Settings 
     display: { ...d.display, ...o.display },
     water: { ...d.water, ...o.water },
     beauty: { ...d.beauty, ...o.beauty },
+    cooking: { ...d.cooking, ...o.cooking },
   };
 }
 

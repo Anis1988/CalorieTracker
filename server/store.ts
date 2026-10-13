@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import type { DayData, Entry, Favorite, Provider, Settings, ShelfItem } from '../src/lib/types.js';
+import type { DayData, Entry, Favorite, Provider, Recipe, Settings, ShelfItem, ShopItem } from '../src/lib/types.js';
 import { withDefaults } from '../src/lib/types.js';
 import { LocalStore } from './localStore.js';
 
@@ -11,6 +11,8 @@ import { LocalStore } from './localStore.js';
  *   ct:weight              hash  date -> kg
  *   ct:favs                hash  id -> Favorite
  *   ct:shelf               hash  id -> ShelfItem    (💄 beauty products you checked or own)
+ *   ct:recipes             hash  id -> Recipe       (🍳 saved recipes)
+ *   ct:pantry / ct:shop    lists (🍳 what you have / what to buy)
  *   ct:photo:<id>          small copy of a meal photo (kept Settings → Photos days)
  *   ct:cache:<hash>        an AI answer (the same photo/words are never paid for twice)
  *   ct:ai:<day>:<provider> AI reads today
@@ -124,6 +126,15 @@ export async function delShelfItem(id: string) {
   await r.hdel('ct:shelf', id);
   if (x?.photo) await r.del(`ct:photo:${x.photo}`);
 }
+
+// ---------- 🍳 cooking ----------
+export const recipes = async () => Object.values((await need().hgetall<Record<string, Recipe>>('ct:recipes')) ?? {}).sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+export const putRecipe = async (x: Recipe) => void (await need().hset('ct:recipes', { [x.id]: x }));
+export const delRecipe = async (id: string) => void (await need().hdel('ct:recipes', id));
+export const pantry = async () => (await need().get<string[]>('ct:pantry')) ?? [];
+export const putPantry = async (l: string[]) => void (await need().set('ct:pantry', l));
+export const shopping = async () => (await need().get<ShopItem[]>('ct:shop')) ?? [];
+export const putShopping = async (l: ShopItem[]) => void (await need().set('ct:shop', l));
 
 // ---------- AI: daily limits and the answer cache ----------
 const today = () => new Date().toISOString().slice(0, 10);

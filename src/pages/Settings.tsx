@@ -3,12 +3,13 @@ import { useStore } from '../lib/store';
 import { api, errText, setCode } from '../lib/api';
 import { todayStr } from '../lib/date';
 import { ACTIVITIES, MACRO_PLANS, autoCalories, bmr, kcalText, kgToLb, lbToKg, macroGoals, tdee, weightNum, waterText } from '../lib/nutrition';
-import { CLAUDE_MODELS, GEMINI_MODELS, type Settings as S } from '../lib/types';
+import { ALLERGIES, CLAUDE_MODELS, DIETS, GEMINI_MODELS, TOOLS, type Settings as S } from '../lib/types';
+import { ChipInput } from '../components/Cooking';
 import { Field, Fold, NumberBox, Seg, Toggle, toast } from '../components/ui';
 import { SkinProfile, profileLine } from '../components/Beauty';
 
 /** ⚙️ Everything you can change. Each change is saved at once (one copy on the server, the same on every device). */
-export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' }) {
+export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' | 'cooking' }) {
   const st = useStore();
   const s = st.settings;
   const u = s.units;
@@ -27,7 +28,7 @@ export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' }) {
         <Fold icon="🌸" title="Your skin" subtitle={profileLine(s.beauty)}>
           <SkinProfile />
         </Fold>
-      ) : (<>
+      ) : space === 'cooking' ? <KitchenFold /> : (<>
       <Fold icon="👤" title="About you" subtitle={`${s.profile.age} y · ${weightNum(s.profile.weightKg, u)} ${u.weight} · ${s.profile.goal === 'lose' ? 'losing' : s.profile.goal === 'gain' ? 'gaining' : 'keeping'} weight`}>
         <Field label="Sex" hint="Used only for the calorie maths."><Seg label="Sex" options={[['male', 'Male'], ['female', 'Female']]} value={s.profile.sex} onChange={(v) => set('profile', { sex: v })} className="w-44" /></Field>
         <Field label="Age"><NumberBox label="Age" value={s.profile.age} min={12} max={100} unit="years" onChange={(n) => set('profile', { age: n })} /></Field>
@@ -91,13 +92,14 @@ export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' }) {
 
       </>)}
 
-      <Fold icon="🤖" title={space === 'beauty' ? 'AI that checks products' : 'AI that reads your food'} subtitle={`${s.ai.provider === 'gemini' ? 'Gemini (free)' : 'Claude (paid)'} first${s.ai.fallback ? ', the other as backup' : ''} · today ${status?.used.gemini ?? 0} + ${status?.used.claude ?? 0}`}>
+      <Fold icon="🤖" title="AI"  subtitle={`${s.ai.provider === 'gemini' ? 'Gemini (free)' : 'Claude (paid)'} first${s.ai.fallback ? ', the other as backup' : ''} · today ${status?.used.gemini ?? 0} + ${status?.used.claude ?? 0}`}>
         <div className="flex flex-wrap gap-1.5 pb-1">
           <Chip ok={!!status?.keys.gemini} label="Gemini key" />
           <Chip ok={!!status?.keys.claude} label="Claude key" />
           <Chip ok={!!status?.store} label="Storage" />
         </div>
-        <Field label="Ask first" hint="Gemini is free (within Google’s daily allowance). Claude costs a little per photo.">
+        <p className="rounded-2xl p-3 text-xs muted" style={{ background: 'var(--trk)' }}>The AI you pick here is used everywhere: 🥗 Calories, 💄 Beauty and 🍳 Cooking. To use the paid Claude for everything, pick <b>Claude</b> below, then Sonnet or Opus.</p>
+        <Field label="Ask first" hint="Gemini is free (within Google’s daily allowance). Claude costs a little per read.">
           <Seg label="AI asked first" options={[['gemini', 'Gemini (free)'], ['claude', 'Claude']]} value={s.ai.provider} onChange={(v) => set('ai', { provider: v })} className="w-56" />
         </Field>
         <Field label="Use the other AI as a backup" hint="When the first one is over its daily limit, isn’t set up, or fails."><Toggle on={s.ai.fallback} onChange={(v) => set('ai', { fallback: v })} label="Backup AI" /></Field>
@@ -128,7 +130,8 @@ export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' }) {
 
       <Fold icon="🎨" title="Look" subtitle={`${s.display.theme === 'auto' ? 'Follows your phone' : s.display.theme === 'dark' ? 'Dark' : 'Light'}`}>
         <Field label="Light or dark"><Seg label="Theme" options={[['auto', 'Phone'], ['light', 'Light'], ['dark', 'Dark']]} value={s.display.theme} onChange={(v) => { applyTheme(v); set('display', { theme: v }); }} className="w-56" /></Field>
-        <Field label="💄 Beauty side" hint="Shows the Food | Beauty switch at the top. Off = a food-only app."><Toggle on={s.beauty.on} onChange={(v) => set('beauty', { on: v })} label="Beauty side" /></Field>
+        <Field label="💄 Beauty side" hint="In the switch at the top."><Toggle on={s.beauty.on} onChange={(v) => set('beauty', { on: v })} label="Beauty side" /></Field>
+        <Field label="🍳 Cooking side" hint="In the switch at the top. Both off = a calories-only app."><Toggle on={s.cooking.on} onChange={(v) => set('cooking', { on: v })} label="Cooking side" /></Field>
         {space === 'food' && <>
         <Field label="Show protein, carbs and fat bars"><Toggle on={s.display.macros} onChange={(v) => set('display', { macros: v })} label="Macro bars" /></Field>
         <Field label="Show the meal score (1–10)"><Toggle on={s.display.healthScore} onChange={(v) => set('display', { healthScore: v })} label="Meal score" /></Field>
@@ -204,6 +207,37 @@ function DataFold() {
           <input className="input min-w-0 flex-1" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="DELETE" aria-label="Type DELETE to confirm" />
           <button className="btn-danger" disabled={busy || confirmText !== 'DELETE'} onClick={() => void wipe()}>Delete</button>
         </div>
+      </div>
+    </Fold>
+  );
+}
+
+/** 🍳 Settings → Your kitchen (Cooking side). */
+function KitchenFold() {
+  const st = useStore();
+  const c = st.settings.cooking;
+  const set = (p: Partial<S['cooking']>) => void st.saveSettings({ ...st.settings, cooking: { ...c, ...p } }).catch((e) => toast('err', errText(e)));
+  const tog = (l: string[], v: string) => (l.includes(v) ? l.filter((x) => x !== v) : [...l, v]);
+  const chip = (on: boolean) => `chip !px-3 !py-1.5 ${on ? '!border-transparent bg-gradient-to-br from-orange-300 to-orange-500 text-[#2b1203]' : ''}`;
+  return (
+    <Fold icon="🍳" title="Your kitchen" subtitle={[c.diet || 'Any diet', c.allergies.length ? `allergies: ${c.allergies.join(', ')}` : '', `${c.servings} servings`].filter(Boolean).join(' · ')} open>
+      <p className="pt-1 text-sm font-bold">Diet</p>
+      <div className="flex flex-wrap gap-1.5">{['', ...DIETS].map((d) => <button key={d || 'any'} className={chip(c.diet === d)} aria-pressed={c.diet === d} onClick={() => set({ diet: d })}>{d || 'Anything'}</button>)}</div>
+      <p className="pt-3 text-sm font-bold">Allergies <span className="font-normal muted">(never used, and double-checked)</span></p>
+      <div className="flex flex-wrap gap-1.5">{ALLERGIES.map((a) => <button key={a} className={chip(c.allergies.includes(a))} aria-pressed={c.allergies.includes(a)} onClick={() => set({ allergies: tog(c.allergies, a) })}>{c.allergies.includes(a) ? '🚫 ' : ''}{a}</button>)}</div>
+      <p className="pt-3 text-sm font-bold">Foods I don’t like</p>
+      <ChipInput label="foods I don't like" values={c.dislikes} onChange={(v) => set({ dislikes: v })} placeholder="e.g. mushrooms, coriander" />
+      <p className="pt-3 text-sm font-bold">Always in my kitchen</p>
+      <ChipInput label="staples" values={c.staples} onChange={(v) => set({ staples: v })} placeholder="e.g. salt, olive oil, garlic" />
+      <p className="pt-3 text-sm font-bold">My kitchen tools</p>
+      <div className="flex flex-wrap gap-1.5">{TOOLS.map((t) => <button key={t} className={chip(c.tools.includes(t))} aria-pressed={c.tools.includes(t)} onClick={() => set({ tools: tog(c.tools, t) })}>{t}</button>)}</div>
+      <div className="pt-2">
+        <Field label="Servings" hint="Usual number of people"><NumberBox label="Servings" value={c.servings} min={1} max={12} onChange={(n) => set({ servings: n })} /></Field>
+        <Field label="Time limit" hint="0 = any"><NumberBox label="Time limit" value={c.maxTime} min={0} max={240} step={5} unit="min" onChange={(n) => set({ maxTime: n })} /></Field>
+        <Field label="How hard"><Seg label="How hard" options={[['easy', 'Easy'], ['medium', 'Medium'], ['any', 'Any']]} value={c.skill} onChange={(v) => set({ skill: v })} className="w-52" /></Field>
+        <Field label="Recipes per search" hint="Fewer is quicker and cheaper"><Seg label="Recipes per search" options={[[4, '4'], [6, '6'], [8, '8']]} value={c.count} onChange={(v) => set({ count: v })} className="w-40" /></Field>
+        <Field label="Amounts in"><Seg label="Recipe units" options={[['metric', 'g / ml'], ['us', 'cups / oz']]} value={c.units} onChange={(v) => set({ units: v })} className="w-48" /></Field>
+        <Field label="Fit my day, every time" hint="Recipes aim at what’s left of today’s calories"><Toggle on={c.fitDay} onChange={(v) => set({ fitDay: v })} label="Fit my day by default" /></Field>
       </div>
     </Fold>
   );

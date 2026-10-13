@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api, ApiError } from './api';
 import { addDays, todayStr } from './date';
-import type { DayData, Entry, Favorite, Settings, ShelfItem, Status } from './types';
+import type { DayData, Entry, Favorite, Recipe, Settings, ShelfItem, ShopItem, Status } from './types';
 import { DEFAULT_SETTINGS } from './types';
 
 /** Everything the screens share. Changes show at once and are saved in the background (one copy on the server). */
@@ -15,6 +15,13 @@ interface Store {
   weights: Record<string, number>;
   favorites: Favorite[];
   shelf: ShelfItem[];
+  recipes: Recipe[];
+  pantry: string[];
+  shopping: ShopItem[];
+  saveRecipe: (r: Recipe) => Promise<void>;
+  deleteRecipe: (id: string) => Promise<void>;
+  setPantry: (l: string[]) => Promise<void>;
+  setShopping: (l: ShopItem[]) => Promise<void>;
   saveShelf: (x: ShelfItem, photo?: string) => Promise<ShelfItem>;
   deleteShelf: (id: string) => Promise<void>;
   saveSettings: (s: Settings) => Promise<void>;
@@ -45,6 +52,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [weights, setWeights] = useState<Record<string, number>>({});
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [shelf, setShelf] = useState<ShelfItem[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [pantry, setPantryS] = useState<string[]>([]);
+  const [shopping, setShoppingS] = useState<ShopItem[]>([]);
   const loaded = useRef<{ from: string; to: string } | null>(null);
   const photos = useRef(new Map<string, Promise<string | null>>());
 
@@ -66,8 +76,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [s, b, sh] = await Promise.all([api.settings(), api.body(), api.shelf().catch(() => ({ shelf: [] as ShelfItem[] }))]);
+      const [s, b, sh, ck] = await Promise.all([api.settings(), api.body(), api.shelf().catch(() => ({ shelf: [] as ShelfItem[] })), api.cooking().catch(() => ({ recipes: [] as Recipe[], pantry: [] as string[], shopping: [] as ShopItem[] }))]);
       setShelf(sh.shelf);
+      setRecipes(ck.recipes);
+      setPantryS(ck.pantry);
+      setShoppingS(ck.shopping);
       setSettings(s.settings);
       setStatus(s.status);
       setWeights(b.weights);
@@ -97,7 +110,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<Store>(() => ({
-    ready, locked, error, settings, status, days, weights, favorites, shelf,
+    ready, locked, error, settings, status, days, weights, favorites, shelf, recipes, pantry, shopping,
     refresh, loadRange,
     unlock: () => { setLocked(false); void refresh(); },
     saveSettings: async (s) => {
@@ -137,6 +150,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (photo && r.item.photo) photos.current.set(r.item.photo, Promise.resolve(photo));
       return r.item;
     },
+    saveRecipe: async (r) => {
+      const x = { ...r, createdAt: r.createdAt || new Date().toISOString() };
+      setRecipes((l) => [x, ...l.filter((y) => y.id !== r.id)]);
+      await api.saveRecipe(x).catch(fail);
+    },
+    deleteRecipe: async (id) => { setRecipes((l) => l.filter((x) => x.id !== id)); await api.deleteRecipe(id).catch(fail); },
+    setPantry: async (l) => { setPantryS(l); await api.savePantry(l).catch(fail); },
+    setShopping: async (l) => { setShoppingS(l); await api.saveShopping(l).catch(fail); },
     deleteShelf: async (id) => { setShelf((l) => l.filter((x) => x.id !== id)); await api.deleteShelf(id).catch(fail); },
     deleteFavorite: async (id) => { setFavorites((l) => l.filter((x) => x.id !== id)); await api.deleteFavorite(id).catch(fail); },
     photo: (id) => {
@@ -144,7 +165,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!p) { p = api.photo(id).then((r) => r.photo).catch(() => null); photos.current.set(id, p); }
       return p;
     },
-  }), [ready, locked, error, settings, status, days, weights, favorites, shelf, refresh, loadRange]);
+  }), [ready, locked, error, settings, status, days, weights, favorites, shelf, recipes, pantry, shopping, refresh, loadRange]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
