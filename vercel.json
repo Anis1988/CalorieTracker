@@ -9,6 +9,9 @@
     },
     "api/beauty.ts": {
       "maxDuration": 120
+    },
+    "api/cooking.ts": {
+      "maxDuration": 300
     }
   },
   "rewrites": [

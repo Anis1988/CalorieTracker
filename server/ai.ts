@@ -81,7 +81,7 @@ function loose(raw: unknown): AiAnswer {
 const FLASH = 'gemini-flash-latest';
 class AiError extends Error { constructor(message: string, public status = 0) { super(message); } }
 type Img = { mime: string; data: string };
-interface Ask<T extends z.ZodTypeAny> { schema: T; system: string; prompt: string; images: Img[] }
+interface Ask<T extends z.ZodTypeAny> { schema: T; system: string; prompt: string; images: Img[]; maxTokens?: number }
 
 async function gemini<T extends z.ZodTypeAny>(q: Ask<T>, s: Settings, model = s.ai.geminiModel): Promise<{ raw: unknown; model: string }> {
   const parts: Record<string, unknown>[] = q.images.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } }));
@@ -94,9 +94,9 @@ async function gemini<T extends z.ZodTypeAny>(q: Ask<T>, s: Settings, model = s.
     body: JSON.stringify({
       system_instruction: { parts: [{ text: `${q.system}\n\nAnswer with JSON only.` }] },
       contents: [{ role: 'user', parts }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 6000, responseMimeType: 'application/json', responseJsonSchema: schema },
+      generationConfig: { temperature: 0.2, maxOutputTokens: q.maxTokens ?? 6000, responseMimeType: 'application/json', responseJsonSchema: schema },
     }),
-    signal: AbortSignal.timeout(70_000),
+    signal: AbortSignal.timeout(150_000),
   });
   const j = (await res.json().catch(() => ({}))) as { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] };
   if (!res.ok) {
@@ -116,10 +116,10 @@ async function gemini<T extends z.ZodTypeAny>(q: Ask<T>, s: Settings, model = s.
 async function claude<T extends z.ZodTypeAny>(q: Ask<T>, s: Settings): Promise<{ raw: unknown; model: string }> {
   const content: Anthropic.Beta.Messages.BetaContentBlockParam[] = q.images.map((im) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: im.mime as 'image/jpeg', data: im.data } }));
   content.push({ type: 'text', text: q.prompt });
-  const client = new Anthropic({ timeout: 90_000, maxRetries: 2 });
+  const client = new Anthropic({ timeout: 240_000, maxRetries: 1 });
   const res = await client.beta.messages.parse({
     model: s.ai.claudeModel,
-    max_tokens: 6000,
+    max_tokens: q.maxTokens ?? 6000,
     system: q.system,
     messages: [{ role: 'user', content }],
     // Low effort (the default): a short, focused answer keeps each read cheap. Haiku models get no effort setting.

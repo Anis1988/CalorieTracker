@@ -1,5 +1,5 @@
 import { apiUrl, getServer, isNative } from './native';
-import type { Analysis, BeautyCheck, DayData, Entry, Favorite, Provider, Settings, ShelfItem, Status } from './types';
+import type { Analysis, BeautyCheck, DayData, Entry, Favorite, Provider, Recipe, RecipeSearch, Settings, ShelfItem, ShopItem, Status } from './types';
 
 /** The access code is kept on this device only (Settings → This device). */
 const KEY = 'ct.code';
@@ -36,6 +36,13 @@ export const api = {
   weight: (date: string, kg: number) => call<{ ok: true }>('/api/body', send('POST', { weight: { date, kg } })),
   deleteWeight: (date: string) => call<{ ok: true }>(`/api/body?weight=${date}`, { method: 'DELETE' }),
   favorite: (favorite: Favorite) => call<{ ok: true }>('/api/body', send('POST', { favorite })),
+  cooking: () => call<{ recipes: Recipe[]; pantry: string[]; shopping: ShopItem[] }>('/api/cooking'),
+  findRecipes: (b: { ingredients: string[]; images: string[]; meal?: string; cuisine?: string; minutes?: number; servings?: number; kcal?: number; protein?: number; wish?: string; model?: Provider }) => call<RecipeSearch>('/api/cooking', send('POST', { find: b })),
+  seeIngredients: (images: string[]) => call<{ items: string[]; by: string }>('/api/cooking', send('POST', { see: { images } })),
+  saveRecipe: (recipe: Recipe) => call<{ ok: true }>('/api/cooking', send('POST', { recipe })),
+  deleteRecipe: (id: string) => call<{ ok: true }>(`/api/cooking?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  savePantry: (pantry: string[]) => call<{ ok: true }>('/api/cooking', send('POST', { pantry })),
+  saveShopping: (shopping: ShopItem[]) => call<{ ok: true }>('/api/cooking', send('POST', { shopping })),
   shelf: () => call<{ shelf: ShelfItem[] }>('/api/beauty'),
   checkProduct: (b: { images: string[]; note?: string; model?: Provider }) => call<Omit<BeautyCheck, 'id' | 'createdAt'>>('/api/beauty', send('POST', { check: b })),
   saveShelf: (item: ShelfItem, photo?: string) => call<{ item: ShelfItem }>('/api/beauty', send('POST', { item, photo })),

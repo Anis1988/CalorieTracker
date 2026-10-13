@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../lib/store';
 
 export function Icon({ d, className = 'h-5 w-5', stroke = 1.8 }: { d: string; className?: string; stroke?: number }) {
@@ -25,6 +26,9 @@ export const ICONS = {
   drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
   spark: 'M12 3l1.8 4.6 4.7 1.9-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.9z',
   copy: 'M8 8h12v12H8zM4 16V4h12',
+  pan: 'M3 12h13v1a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5zM16 12h5M7 8c0-1.5 1-1.5 1-3M11 8c0-1.5 1-1.5 1-3',
+  book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 19V5M8 7h7M8 11h5',
+  basket: 'M3 10h18l-2 10H5zM7 10l4-6M17 10l-4-6M9 14v3M15 14v3M12 14v3',
   sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z',
   shelf: 'M4 4v16M20 4v16M4 10h16M4 20h16M7 10V7h3v3M13 10V6h3v4M8 20v-6h3v6M14 20v-4h3v4',
   face: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM9 11h.01M15 11h.01M9.5 15a3.5 3.5 0 0 0 5 0M6 6c2-3 10-3 12 0',
@@ -105,7 +109,8 @@ export function Sheet({ title, onClose, children, wide }: { title: string; onClo
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', k); document.body.style.overflow = ''; };
   }, [onClose]);
-  return (
+  // Drawn at the top of the page (a portal), so a panel opened from another panel still covers the whole screen.
+  return createPortal(
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-stone-950/40 backdrop-blur-md animate-[fade_.25s_ease-out] sm:items-center" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         className={`max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-[30px] border border-white/70 bg-[#f6f8f2]/95 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl animate-[pop_.45s_cubic-bezier(.34,1.3,.64,1)] dark:border-white/10 dark:bg-[#0d1110]/95 dark:shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] sm:rounded-[30px] sm:pb-6 ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}>
@@ -116,7 +121,8 @@ export function Sheet({ title, onClose, children, wide }: { title: string; onClo
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

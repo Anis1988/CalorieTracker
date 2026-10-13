@@ -25,6 +25,7 @@
         var sp = 'food';
         try { sp = localStorage.getItem('ct.space') || 'food'; } catch (e) {}
         document.documentElement.classList.toggle('beauty', sp === 'beauty');
+        document.documentElement.classList.toggle('cooking', sp === 'cooking');
       })();
     </script>
   </head>

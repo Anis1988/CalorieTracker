@@ -22,11 +22,15 @@
 :root { --okbg: rgba(63, 98, 18, .92); }
 .beauty { --okbg: rgba(157, 23, 77, .92); --a: #f9a8d4; --a2: #c084fc; --ink: #2a0b22; --rip: rgba(249, 168, 212, .55); }
 .beauty.dark { --rip: rgba(255, 255, 255, .38); }
+/* 🍳 Cooking: warm orange / paprika. */
+.cooking { --okbg: rgba(154, 52, 18, .92); --a: #fdba74; --a2: #f97316; --ink: #2b1203; --rip: rgba(253, 186, 116, .55); }
+.cooking.dark { --rip: rgba(255, 255, 255, .38); }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
   body { @apply bg-[#f3f5ef] text-stone-800 antialiased dark:bg-[#07090c] dark:text-stone-200; font-family: Manrope, system-ui, sans-serif; transition: background-color .5s; }
   .beauty body { @apply bg-[#fbf1f5] dark:bg-[#0e070c]; }
+  .cooking body { @apply bg-[#fbf5ef] dark:bg-[#0f0905]; }
   h1, h2, h3 { @apply font-display tracking-tight text-stone-900 dark:text-stone-50; }
   ::selection { @apply bg-lime-300/60 dark:bg-lime-500/40; }
 }
@@ -56,7 +60,9 @@
     background: radial-gradient(circle, rgba(190, 242, 100, .5), rgba(190, 242, 100, 0) 60%); opacity: 0; transform: scale(.2); transition: opacity .7s ease, transform 0s .7s; }
   .tap:not(:disabled):active::after { opacity: 1; transform: scale(1); transition: opacity .05s, transform .55s var(--soft); }
   .dark .tap::after { background: radial-gradient(circle, rgba(255, 255, 255, .38), rgba(255, 255, 255, 0) 60%); }
-  .beauty .tap::after { background: radial-gradient(circle, var(--rip), transparent 60%); }
+  .beauty .tap::after, .cooking .tap::after { background: radial-gradient(circle, var(--rip), transparent 60%); }
+  .cooking .btn-primary:not(:disabled):active { box-shadow: 0 0 0 6px rgba(249, 115, 22, .22), 0 0 32px var(--a); }
+  .cooking .tabbtn[aria-current="page"] svg { filter: drop-shadow(0 0 7px rgba(253, 186, 116, .9)); }
   .beauty .btn-primary:not(:disabled):active { box-shadow: 0 0 0 6px rgba(192, 132, 252, .22), 0 0 32px var(--a); }
   .beauty .tabbtn[aria-current="page"] svg { filter: drop-shadow(0 0 7px rgba(249, 168, 212, .9)); }
 
