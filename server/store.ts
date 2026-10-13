@@ -17,16 +17,30 @@ import { LocalStore } from './localStore.js';
 let redis: Redis | null | undefined;
 export function db(): Redis | null {
   if (redis !== undefined) return redis;
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  const { url, token } = redisKeys();
   // npm run dev without Upstash keys: a small local file instead (set by vite.config.ts, never on Vercel).
   redis = url && token ? new Redis({ url, token }) : process.env.CT_LOCAL_STORE === '1' ? (new LocalStore() as unknown as Redis) : null;
   return redis;
 }
 export const storeReady = () => !!db();
+
+/**
+ * The Upstash keys Vercel adds when you connect the database. Their names depend on the prefix picked when
+ * connecting (KV_REST_API_URL, UPSTASH_REDIS_REST_URL, STORAGE_KV_REST_API_URL, MYDB_REDIS_REST_URL…), so any
+ * name ending like that is taken. The read-only token is never used.
+ */
+function redisKeys(): { url?: string; token?: string } {
+  const env = process.env;
+  const pick = (ends: string[], not?: RegExp) => {
+    for (const e of ends) if (env[e]?.trim()) return env[e]!.trim();
+    const k = Object.keys(env).find((n) => ends.some((e) => n.endsWith(`_${e}`)) && (!not || !not.test(n)) && env[n]?.trim());
+    return k ? env[k]!.trim() : undefined;
+  };
+  return { url: pick(['KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL', 'REDIS_REST_URL']), token: pick(['KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN', 'REDIS_REST_TOKEN'], /READ_ONLY/) };
+}
 function need(): Redis {
   const r = db();
-  if (!r) throw new Error('Storage isn’t set up: add Upstash for Redis in Vercel → Storage, then redeploy.');
+  if (!r) throw new Error('Storage isn’t set up: in Vercel → Storage, create “Upstash for Redis” (or open it) and connect it to this project, then Deployments → Redeploy.');
   return r;
 }
 
