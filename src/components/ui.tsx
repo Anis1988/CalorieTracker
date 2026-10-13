@@ -25,6 +25,9 @@ export const ICONS = {
   drop: 'M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z',
   spark: 'M12 3l1.8 4.6 4.7 1.9-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.9z',
   copy: 'M8 8h12v12H8zM4 16V4h12',
+  sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z',
+  shelf: 'M4 4v16M20 4v16M4 10h16M4 20h16M7 10V7h3v3M13 10V6h3v4M8 20v-6h3v6M14 20v-4h3v4',
+  face: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM9 11h.01M15 11h.01M9.5 15a3.5 3.5 0 0 0 5 0M6 6c2-3 10-3 12 0',
 };
 
 export function Toggle({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
@@ -133,7 +136,7 @@ export function Toasts() {
   return (
     <div className="pointer-events-none fixed inset-x-0 top-[max(12px,env(safe-area-inset-top))] z-50 flex flex-col items-center gap-2 px-4" aria-live="polite">
       {list.map((t) => (
-        <div key={t.id} className={`pointer-events-auto max-w-md rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_40px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl animate-[popin_.45s_cubic-bezier(.34,1.56,.64,1)] ${t.kind === 'err' ? 'bg-red-700/90' : t.kind === 'ok' ? 'bg-lime-800/90' : 'bg-stone-800/90'}`}>{t.text}</div>
+        <div key={t.id} className={`pointer-events-auto max-w-md rounded-2xl border border-white/15 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_40px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl animate-[popin_.45s_cubic-bezier(.34,1.56,.64,1)] ${t.kind === 'err' ? 'bg-red-700/90' : t.kind === 'ok' ? 'bg-[var(--okbg)]' : 'bg-stone-800/90'}`}>{t.text}</div>
       ))}
     </div>
   );
@@ -146,5 +149,5 @@ export function Thumb({ id, src, className = 'h-14 w-14', fallback = '🍽️' }
   useEffect(() => { if (!src && id) void st.photo(id).then(setUrl); }, [id, src, st]);
   return url
     ? <img src={url} alt="" className={`${className} shrink-0 rounded-2xl object-cover`} />
-    : <span className={`${className} flex shrink-0 items-center justify-center rounded-2xl bg-lime-500/10 text-2xl`} aria-hidden="true">{fallback}</span>;
+    : <span className={`${className} flex shrink-0 items-center justify-center rounded-2xl text-2xl`} style={{ background: 'var(--trk)' }} aria-hidden="true">{fallback}</span>;
 }

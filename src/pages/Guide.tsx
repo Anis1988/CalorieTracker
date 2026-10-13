@@ -36,6 +36,7 @@ export function Guide() {
 
       <Fold icon="✨" title="What it does" open>
         <P>Take a photo of what you eat. The AI finds every food and drink on the plate, guesses each portion, and works out the calories, protein, carbs, fat, fiber and sugar. You check it, fix anything, and save. The app adds it all up for the day.</P>
+        <P>The switch at the top goes to <b>💄 Beauty</b>: snap a skincare or makeup product and see if it suits your skin (it has its own menu, look and guide). Don’t need it? Settings → Look → Beauty side: off.</P>
         <P>The ring shows what’s <b>left</b> of today’s goal (it turns red with “over by” if you go past it). The bars under it are protein, carbs and fat against your goals.</P>
         <Example caption="Made-up day: 1,420 kcal eaten of a 2,200 goal.">
           <div className="flex flex-col items-center gap-3"><CalorieRing eaten={1420} goal={2200} units={u} size={170} /><div className="w-full"><MacroBars t={{ calories: 1420, protein: 96, carbs: 150, fat: 45, fiber: 18, sugar: 30 }} goals={{ protein: 138, carbs: 248, fat: 73 }} /></div></div>

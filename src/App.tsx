@@ -2,31 +2,48 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { StoreProvider, useStore } from './lib/store';
 import { api, getCode, setCode, errText } from './lib/api';
 import { todayStr } from './lib/date';
-import { ICONS, Icon, Toasts } from './components/ui';
+import { ICONS, Icon, Seg, Toasts } from './components/ui';
 import type { AddMode } from './components/Add';
 import { Today } from './pages/Today';
 import { History } from './pages/History';
 import { Weight } from './pages/Weight';
 import { Settings } from './pages/Settings';
 import { Guide } from './pages/Guide';
+import { BeautyGuide, BeautyHome, Shelf, Skin } from './pages/Beauty';
 
-type Tab = 'today' | 'history' | 'weight' | 'settings' | 'guide';
-// Bottom bar: 4 tabs and the big camera button in the middle (slot 2).
-const TABS: { id: Exclude<Tab, 'guide'>; label: string; icon: string; slot: number }[] = [
-  { id: 'today', label: 'Today', icon: ICONS.today, slot: 0 },
-  { id: 'history', label: 'History', icon: ICONS.history, slot: 1 },
-  { id: 'weight', label: 'Weight', icon: ICONS.weight, slot: 3 },
-  { id: 'settings', label: 'Settings', icon: ICONS.settings, slot: 4 },
-];
-const tabOf = (): Tab => { const h = location.hash.replace('#/', ''); return (['today', 'history', 'weight', 'settings', 'guide'] as Tab[]).includes(h as Tab) ? (h as Tab) : 'today'; };
+type Space = 'food' | 'beauty';
+type Tab = 'today' | 'history' | 'weight' | 'check' | 'shelf' | 'skin' | 'settings' | 'guide';
+type Slot = { id: Tab; label: string; icon: string; slot: number };
+// Each side has its own bottom bar: 4 tabs and the big camera button in the middle (slot 2). Settings is shared.
+const TABS: Record<Space, Slot[]> = {
+  food: [
+    { id: 'today', label: 'Today', icon: ICONS.today, slot: 0 },
+    { id: 'history', label: 'History', icon: ICONS.history, slot: 1 },
+    { id: 'weight', label: 'Weight', icon: ICONS.weight, slot: 3 },
+    { id: 'settings', label: 'Settings', icon: ICONS.settings, slot: 4 },
+  ],
+  beauty: [
+    { id: 'check', label: 'Check', icon: ICONS.sparkle, slot: 0 },
+    { id: 'shelf', label: 'My shelf', icon: ICONS.shelf, slot: 1 },
+    { id: 'skin', label: 'Skin', icon: ICONS.face, slot: 3 },
+    { id: 'settings', label: 'Settings', icon: ICONS.settings, slot: 4 },
+  ],
+};
+const HOME: Record<Space, Tab> = { food: 'today', beauty: 'check' };
+const ALL: Tab[] = ['today', 'history', 'weight', 'check', 'shelf', 'skin', 'settings', 'guide'];
+const tabOf = (sp: Space): Tab => { const h = location.hash.replace('#/', '') as Tab; return ALL.includes(h) && (h === 'settings' || h === 'guide' || TABS[sp].some((t) => t.id === h)) ? h : HOME[sp]; };
+const spaceNow = (): Space => { try { return localStorage.getItem('ct.space') === 'beauty' ? 'beauty' : 'food'; } catch { return 'food'; } };
 
-/** The slow lime / amber / rose glow behind the glass (still when the phone asks for less motion). */
-function Glow() {
+/** The slow glow behind the glass: lime / amber / rose for Food, pink / orchid / peach for Beauty. */
+function Glow({ space }: { space: Space }) {
+  const c = space === 'beauty'
+    ? ['bg-pink-300 dark:bg-pink-600 dark:opacity-30', 'bg-purple-300 dark:bg-purple-700 dark:opacity-30', 'bg-orange-200 dark:bg-rose-700 dark:opacity-[0.22]']
+    : ['bg-lime-300 dark:bg-lime-600 dark:opacity-30', 'bg-amber-200 dark:bg-amber-600 dark:opacity-25', 'bg-rose-200 dark:bg-rose-700 dark:opacity-[0.22]'];
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="absolute -left-32 -top-28 h-[380px] w-[420px] rounded-full bg-lime-300 opacity-45 blur-[70px] will-change-transform animate-[drift1_20s_ease-in-out_infinite] dark:bg-lime-600 dark:opacity-30" />
-      <div className="absolute -right-40 top-48 h-[340px] w-[380px] rounded-full bg-amber-200 opacity-50 blur-[80px] will-change-transform animate-[drift2_24s_ease-in-out_infinite] dark:bg-amber-600 dark:opacity-25" />
-      <div className="absolute -bottom-32 left-6 h-[260px] w-[320px] rounded-full bg-rose-200 opacity-40 blur-[90px] will-change-transform animate-[drift1_28s_ease-in-out_infinite] dark:bg-rose-700 dark:opacity-[0.22]" />
+      <div className={`absolute -left-32 -top-28 h-[380px] w-[420px] rounded-full opacity-45 blur-[70px] transition-colors duration-700 will-change-transform animate-[drift1_20s_ease-in-out_infinite] ${c[0]}`} />
+      <div className={`absolute -right-40 top-48 h-[340px] w-[380px] rounded-full opacity-50 blur-[80px] transition-colors duration-700 will-change-transform animate-[drift2_24s_ease-in-out_infinite] ${c[1]}`} />
+      <div className={`absolute -bottom-32 left-6 h-[260px] w-[320px] rounded-full opacity-40 blur-[90px] transition-colors duration-700 will-change-transform animate-[drift1_28s_ease-in-out_infinite] ${c[2]}`} />
     </div>
   );
 }
@@ -44,44 +61,66 @@ export function App() {
 
 function Main() {
   const st = useStore();
-  const [tab, setTab] = useState<Tab>(tabOf());
+  const beautyOn = st.settings.beauty.on;
+  const [space, setSpace] = useState<Space>(spaceNow());
+  const sp: Space = beautyOn ? space : 'food';
+  const [tab, setTab] = useState<Tab>(tabOf(sp));
   const [date, setDate] = useState(todayStr());
   const [add, setAdd] = useState<AddMode | null>(null);
+  const [check, setCheck] = useState<'pick' | 'camera' | 'gallery' | null>(null);
   useEffect(() => {
-    const f = () => setTab(tabOf());
+    const f = () => setTab(tabOf(sp));
+    f();
     window.addEventListener('hashchange', f);
     return () => window.removeEventListener('hashchange', f);
-  }, []);
+  }, [sp]);
+  useEffect(() => { document.documentElement.classList.toggle('beauty', sp === 'beauty'); }, [sp]);
   const go = (t: Tab) => { location.hash = `#/${t}`; window.scrollTo(0, 0); };
+  const switchTo = (s: Space) => {
+    if (s === sp) return;
+    try { localStorage.setItem('ct.space', s); } catch { /* private mode */ }
+    setSpace(s);
+    location.hash = `#/${HOME[s]}`;
+    window.scrollTo(0, 0);
+  };
 
   if (!st.ready) return <Shell><p className="mt-20 text-center text-sm muted"><span className="spinner" /> Loading…</p></Shell>;
   if (st.locked || !getCode()) return <Shell><Lock /></Shell>;
 
-  const slot = TABS.find((t) => t.id === tab)?.slot ?? 0;
+  const tabs = TABS[sp];
+  const slot = tabs.find((t) => t.id === tab)?.slot ?? 0;
+  const pink = sp === 'beauty';
   return (
     <div className="min-h-screen pb-32">
-      <Glow />
-      <header className="sticky top-0 z-30 border-b border-stone-900/5 bg-[#f3f5ef]/70 backdrop-blur-xl dark:border-white/[0.06] dark:bg-[#07090c]/70" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="mx-auto flex max-w-xl items-center gap-2.5 px-4 py-2.5">
-          <img src="/icon.svg" alt="" className="h-8 w-8" />
-          <span className="font-display text-xl font-semibold tracking-tight">Calories</span>
-          <button onClick={() => go('guide')} aria-label="Guide" className={`btn ml-auto h-11 w-11 !p-0 ${tab === 'guide' ? '!border-lime-500 text-lime-700 shadow-[0_0_18px_-4px_#bef264] dark:!border-lime-300 dark:text-lime-200' : 'text-stone-600 dark:text-stone-300'}`}><Icon d={ICONS.help} /></button>
+      <Glow space={sp} />
+      <header className={`sticky top-0 z-30 border-b border-stone-900/5 backdrop-blur-xl transition-colors duration-500 dark:border-white/[0.06] ${pink ? 'bg-[#fbf1f5]/70 dark:bg-[#0e070c]/70' : 'bg-[#f3f5ef]/70 dark:bg-[#07090c]/70'}`} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="mx-auto flex max-w-xl items-center gap-2 px-4 py-2.5">
+          <img src={pink ? '/beauty.svg' : '/icon.svg'} alt="" className="h-8 w-8 shrink-0" />
+          <span className="hidden font-display text-xl font-semibold tracking-tight min-[400px]:inline">{pink ? 'Beauty' : 'Calories'}</span>
+          {beautyOn && <Seg label="Food or beauty" className="ml-auto w-[176px]" options={[['food', '🍽️ Food'], ['beauty', '💄 Beauty']]} value={sp} onChange={switchTo} />}
+          <button onClick={() => go('guide')} aria-label="Guide" className={`btn h-11 w-11 shrink-0 !p-0 ${beautyOn ? '' : 'ml-auto'} ${tab === 'guide' ? (pink ? '!border-pink-400 text-pink-700 shadow-[0_0_18px_-4px_#f9a8d4] dark:!border-pink-300 dark:text-pink-200' : '!border-lime-500 text-lime-700 shadow-[0_0_18px_-4px_#bef264] dark:!border-lime-300 dark:text-lime-200') : 'text-stone-600 dark:text-stone-300'}`}><Icon d={ICONS.help} /></button>
         </div>
       </header>
       {st.error && <p className="mx-auto mt-3 max-w-xl px-4"><span className="card block border-red-300 !py-3 text-sm text-red-800 dark:text-red-200">{st.error} <button className="font-bold underline" onClick={() => void st.refresh()}>Try again</button></span></p>}
-      <main key={tab} className="rise mx-auto max-w-xl px-4 py-4">
+      <main key={`${sp}-${tab}`} className="rise mx-auto max-w-xl px-4 py-4">
         {tab === 'today' ? <Today date={date} setDate={setDate} add={add} setAdd={setAdd} />
           : tab === 'history' ? <History openDay={(d) => { setDate(d); go('today'); }} />
-          : tab === 'weight' ? <Weight /> : tab === 'settings' ? <Settings /> : <Guide />}
+          : tab === 'weight' ? <Weight />
+          : tab === 'check' ? <BeautyHome check={check} setCheck={setCheck} go={(t) => go(t as Tab)} />
+          : tab === 'shelf' ? <Shelf />
+          : tab === 'skin' ? <Skin />
+          : tab === 'settings' ? <Settings space={sp} />
+          : pink ? <BeautyGuide /> : <Guide />}
       </main>
       <nav aria-label="Tabs" className="glass fixed inset-x-3 z-30 mx-auto flex max-w-xl rounded-[28px] p-1.5" style={{ bottom: 'max(12px, env(safe-area-inset-bottom))' }}>
         <span aria-hidden="true" className="tabpill" style={{ '--i': slot, opacity: tab === 'guide' ? 0 : 1 } as CSSProperties} />
         {[0, 1, 2, 3, 4].map((i) => {
-          const t = TABS.find((x) => x.slot === i);
+          const t = tabs.find((x) => x.slot === i);
           if (!t) return (
             <div key="add" className="z-[1] flex flex-1 basis-0 items-center justify-center">
-              <button aria-label="Add food: take a photo" onClick={() => { if (tab !== 'today') go('today'); setAdd('pick'); }}
-                className="btn-primary -mt-7 h-[62px] w-[62px] !rounded-full !p-0 shadow-[0_10px_30px_-8px_#f59e0b,0_0_0_5px_rgba(243,245,239,0.9)] dark:shadow-[0_10px_30px_-8px_#f59e0b,0_0_0_5px_rgba(7,9,12,0.9)]">
+              <button aria-label={pink ? 'Check a product: take a photo' : 'Add food: take a photo'}
+                onClick={() => { if (pink) { if (tab !== 'check') go('check'); setCheck('camera'); } else { if (tab !== 'today') go('today'); setAdd('pick'); } }}
+                className={`btn-primary -mt-7 h-[62px] w-[62px] !rounded-full !p-0 ${pink ? 'shadow-[0_10px_30px_-8px_#c084fc,0_0_0_5px_rgba(251,241,245,0.9)] dark:shadow-[0_10px_30px_-8px_#c084fc,0_0_0_5px_rgba(14,7,12,0.9)]' : 'shadow-[0_10px_30px_-8px_#f59e0b,0_0_0_5px_rgba(243,245,239,0.9)] dark:shadow-[0_10px_30px_-8px_#f59e0b,0_0_0_5px_rgba(7,9,12,0.9)]'}`}>
                 <Icon d={ICONS.camera} className="h-7 w-7" stroke={2} />
               </button>
             </div>
@@ -101,7 +140,7 @@ function Main() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-md px-4 py-10">
-      <Glow />
+      <Glow space={spaceNow()} />
       <div className="mb-6 flex items-center gap-2"><img src="/icon.svg" alt="" className="h-10 w-10" /><span className="font-display text-2xl font-semibold">Calories</span></div>
       {children}
       <Toasts />

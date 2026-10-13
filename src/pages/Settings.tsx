@@ -5,9 +5,10 @@ import { todayStr } from '../lib/date';
 import { ACTIVITIES, MACRO_PLANS, autoCalories, bmr, kcalText, kgToLb, lbToKg, macroGoals, tdee, weightNum, waterText } from '../lib/nutrition';
 import { CLAUDE_MODELS, GEMINI_MODELS, type Settings as S } from '../lib/types';
 import { Field, Fold, NumberBox, Seg, Toggle, toast } from '../components/ui';
+import { SkinProfile, profileLine } from '../components/Beauty';
 
 /** ⚙️ Everything you can change. Each change is saved at once (one copy on the server, the same on every device). */
-export function Settings() {
+export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' }) {
   const st = useStore();
   const s = st.settings;
   const u = s.units;
@@ -22,6 +23,11 @@ export function Settings() {
     <div className="mx-auto max-w-xl space-y-3">
       <h1 className="text-2xl font-semibold">Settings</h1>
 
+      {space === 'beauty' ? (
+        <Fold icon="🌸" title="Your skin" subtitle={profileLine(s.beauty)}>
+          <SkinProfile />
+        </Fold>
+      ) : (<>
       <Fold icon="👤" title="About you" subtitle={`${s.profile.age} y · ${weightNum(s.profile.weightKg, u)} ${u.weight} · ${s.profile.goal === 'lose' ? 'losing' : s.profile.goal === 'gain' ? 'gaining' : 'keeping'} weight`}>
         <Field label="Sex" hint="Used only for the calorie maths."><Seg label="Sex" options={[['male', 'Male'], ['female', 'Female']]} value={s.profile.sex} onChange={(v) => set('profile', { sex: v })} className="w-44" /></Field>
         <Field label="Age"><NumberBox label="Age" value={s.profile.age} min={12} max={100} unit="years" onChange={(n) => set('profile', { age: n })} /></Field>
@@ -83,7 +89,9 @@ export function Settings() {
         <Field label="Dinner until" hint="After this it’s a snack."><input type="time" className="input" value={s.meals.dinnerUntil} onChange={(e) => e.target.value && set('meals', { dinnerUntil: e.target.value })} aria-label="Dinner until" /></Field>
       </Fold>
 
-      <Fold icon="🤖" title="AI that reads your food" subtitle={`${s.ai.provider === 'gemini' ? 'Gemini (free)' : 'Claude (paid)'} first${s.ai.fallback ? ', the other as backup' : ''} · today ${status?.used.gemini ?? 0} + ${status?.used.claude ?? 0}`}>
+      </>)}
+
+      <Fold icon="🤖" title={space === 'beauty' ? 'AI that checks products' : 'AI that reads your food'} subtitle={`${s.ai.provider === 'gemini' ? 'Gemini (free)' : 'Claude (paid)'} first${s.ai.fallback ? ', the other as backup' : ''} · today ${status?.used.gemini ?? 0} + ${status?.used.claude ?? 0}`}>
         <div className="flex flex-wrap gap-1.5 pb-1">
           <Chip ok={!!status?.keys.gemini} label="Gemini key" />
           <Chip ok={!!status?.keys.claude} label="Claude key" />
@@ -120,10 +128,13 @@ export function Settings() {
 
       <Fold icon="🎨" title="Look" subtitle={`${s.display.theme === 'auto' ? 'Follows your phone' : s.display.theme === 'dark' ? 'Dark' : 'Light'}`}>
         <Field label="Light or dark"><Seg label="Theme" options={[['auto', 'Phone'], ['light', 'Light'], ['dark', 'Dark']]} value={s.display.theme} onChange={(v) => { applyTheme(v); set('display', { theme: v }); }} className="w-56" /></Field>
+        <Field label="💄 Beauty side" hint="Shows the Food | Beauty switch at the top. Off = a food-only app."><Toggle on={s.beauty.on} onChange={(v) => set('beauty', { on: v })} label="Beauty side" /></Field>
+        {space === 'food' && <>
         <Field label="Show protein, carbs and fat bars"><Toggle on={s.display.macros} onChange={(v) => set('display', { macros: v })} label="Macro bars" /></Field>
         <Field label="Show the meal score (1–10)"><Toggle on={s.display.healthScore} onChange={(v) => set('display', { healthScore: v })} label="Meal score" /></Field>
         <Field label="Water tracker"><Toggle on={s.water.on} onChange={(v) => set('water', { on: v })} label="Water tracker" /></Field>
         {s.water.on && <Field label="One glass is" hint={waterText(s.water.step, u)}><NumberBox label="Glass size" value={u.water === 'oz' ? Math.round(s.water.step / 29.5735) : s.water.step} min={u.water === 'oz' ? 2 : 50} max={u.water === 'oz' ? 40 : 1000} step={u.water === 'oz' ? 1 : 50} unit={u.water} onChange={(n) => set('water', { step: Math.round(u.water === 'oz' ? n * 29.5735 : n) })} /></Field>}
+        </>}
       </Fold>
 
       <DataFold />
@@ -171,7 +182,7 @@ function DataFold() {
   };
   const json = async () => {
     setBusy(true);
-    try { download(`calorie-tracker-backup-${todayStr()}.json`, 'application/json', JSON.stringify({ settings: st.settings, days: await all(), weights: st.weights, favorites: st.favorites }, null, 1)); } catch (e) { toast('err', errText(e)); }
+    try { download(`calorie-tracker-backup-${todayStr()}.json`, 'application/json', JSON.stringify({ settings: st.settings, days: await all(), weights: st.weights, favorites: st.favorites, beautyShelf: st.shelf }, null, 1)); } catch (e) { toast('err', errText(e)); }
     setBusy(false);
   };
   const wipe = async () => {
@@ -188,7 +199,7 @@ function DataFold() {
       <p className="pt-1 text-xs muted">The spreadsheet has one line per food (opens in Excel or Google Sheets).</p>
       <div className="mt-3 space-y-2 rounded-2xl border border-red-300 p-3 dark:border-red-900">
         <p className="text-sm font-bold text-red-700 dark:text-red-300">Delete everything</p>
-        <p className="text-xs muted">Every meal, photo, weight, favorite and setting. This can’t be undone. Type DELETE to confirm.</p>
+        <p className="text-xs muted">Every meal, photo, weight, favorite, beauty product and setting. This can’t be undone. Type DELETE to confirm.</p>
         <div className="flex gap-2">
           <input className="input min-w-0 flex-1" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="DELETE" aria-label="Type DELETE to confirm" />
           <button className="btn-danger" disabled={busy || confirmText !== 'DELETE'} onClick={() => void wipe()}>Delete</button>

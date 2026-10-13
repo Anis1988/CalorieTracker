@@ -29,8 +29,8 @@ export function CalorieRing({ eaten, goal, units, size = 196 }: { eaten: number;
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" className="overflow-visible">
         <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a3e635" /><stop offset="1" stopColor="#f59e0b" /></linearGradient></defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} style={{ stroke: 'var(--trk)' }} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${c * Math.min(1, share)} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          stroke={over ? undefined : `url(#${id})`} className={`ring-arc transition-[stroke-dasharray] duration-700 ${over ? 'stroke-red-500 dark:stroke-red-400' : ''}`} style={over ? undefined : { filter: 'drop-shadow(0 0 8px rgba(163,230,53,.45))' }} />
+        {eaten > 0 && <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={`${c * Math.min(1, share)} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          stroke={over ? undefined : `url(#${id})`} className={`ring-arc transition-[stroke-dasharray] duration-700 ${over ? 'stroke-red-500 dark:stroke-red-400' : ''}`} style={over ? undefined : { filter: 'drop-shadow(0 0 8px rgba(163,230,53,.45))' }} />}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="label">{over ? 'Over by' : 'Left'}</span>
