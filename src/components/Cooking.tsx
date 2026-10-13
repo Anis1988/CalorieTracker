@@ -187,6 +187,12 @@ function CookMode({ r, factor, onClose, onDone }: { r: Recipe; factor: number; o
     void nav.wakeLock?.request('screen').then((l) => { lock.current = l; }).catch(() => undefined);
     return () => void lock.current?.release().catch(() => undefined);
   }, []);
+  // Escape / the phone's back button closes cook mode only (not the recipe under it).
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); onClose(); } };
+    window.addEventListener('keydown', k, true);
+    return () => window.removeEventListener('keydown', k, true);
+  }, [onClose]);
   useEffect(() => {
     if (left == null) return;
     if (left <= 0) {
