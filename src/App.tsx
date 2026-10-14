@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { StoreProvider, useStore } from './lib/store';
+import { StoreProvider, dayOf, useStore } from './lib/store';
 import { api, getCode, setCode, errText } from './lib/api';
 import { todayStr } from './lib/date';
 import { ICONS, Icon, Seg, Toasts } from './components/ui';
@@ -12,6 +12,8 @@ import { Guide } from './pages/Guide';
 import { BeautyGuide, BeautyHome, Shelf, Skin } from './pages/Beauty';
 import { App as NativeApp } from '@capacitor/app';
 import { AppUpdateCheck } from './components/AppUpdate';
+import { pushWidget } from './lib/widget';
+import { energyNum, energyUnit, macroGoals, sum, waterText } from './lib/nutrition';
 import { DEFAULT_SERVER, getServer, isNative, setServer } from './lib/native';
 import { CookHome, CookingGuide, Pantry, Recipes } from './pages/Cooking';
 
@@ -101,6 +103,23 @@ function Main() {
     });
     return () => void h.then((x) => x.remove());
   }, [sp]);
+  // 📱 Home-screen widget: today's calories left and water, sent whenever they change.
+  useEffect(() => {
+    if (!st.ready || st.locked) return;
+    const s = st.settings;
+    const t = todayStr();
+    const d = dayOf(st.days, t);
+    const goal = macroGoals(s).calories;
+    const eaten = sum(d.entries.flatMap((e) => e.items)).calories;
+    const left = goal - eaten;
+    const n = (x: number) => energyNum(Math.abs(x), s.units).toLocaleString();
+    const water = s.water.on ? `💧 ${waterText(d.water, s.units)} of ${waterText(s.goals.waterMl, s.units)}` : '';
+    pushWidget({
+      date: t, big: n(left), label: left < 0 ? `${energyUnit(s.units)} over` : `${energyUnit(s.units)} left`, over: left < 0,
+      sub: `${n(eaten)} of ${n(goal)} ${energyUnit(s.units)} eaten`, water, pct: goal ? Math.round((eaten / goal) * 100) : 0,
+      newBig: n(goal), newSub: `0 of ${n(goal)} ${energyUnit(s.units)} eaten`, newWater: s.water.on ? `💧 0 of ${waterText(s.goals.waterMl, s.units)}` : '',
+    });
+  }, [st.ready, st.locked, st.days, st.settings]);
   const switchTo = (s: Space) => {
     if (s === sp) return;
     try { localStorage.setItem('ct.space', s); } catch { /* private mode */ }
