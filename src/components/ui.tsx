@@ -157,3 +157,33 @@ export function Thumb({ id, src, className = 'h-14 w-14', fallback = '🍽️' }
     ? <img src={url} alt="" className={`${className} shrink-0 rounded-2xl object-cover`} />
     : <span className={`${className} flex shrink-0 items-center justify-center rounded-2xl text-2xl`} style={{ background: 'var(--trk)' }} aria-hidden="true">{fallback}</span>;
 }
+
+/**
+ * 🖼️ A photo full screen in high quality: the small copy shows at once, the big one fades in when it has loaded.
+ * Tap the photo to zoom in (then drag to look around), tap again to zoom out. Escape / ✕ / back closes it.
+ */
+export function PhotoViewer({ thumb, full, alt, credit, onClose }: { thumb: string; full: string; alt: string; credit?: string; onClose: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopImmediatePropagation(); onClose(); } };
+    window.addEventListener('keydown', k, true);
+    return () => window.removeEventListener('keydown', k, true);
+  }, [onClose]);
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={alt} className="fixed inset-0 z-[60] flex flex-col bg-black/95 animate-[fade_.2s_ease-out]">
+      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <p className="min-w-0 truncate text-sm font-semibold text-white/90">{alt}</p>
+        <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-5 w-5" stroke={2.4} /></button>
+      </div>
+      <div className={`relative flex-1 ${zoom ? 'overflow-auto' : 'flex items-center justify-center overflow-hidden'}`} onClick={() => setZoom((z) => !z)}>
+        <img src={thumb} alt="" aria-hidden="true" className={`absolute inset-0 m-auto max-h-full max-w-full object-contain blur-sm transition-opacity duration-500 ${loaded || zoom ? 'opacity-0' : 'opacity-100'}`} />
+        <img src={full} alt={alt} onLoad={() => setLoaded(true)}
+          className={`relative transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'} ${zoom ? 'max-w-none w-[220%] cursor-zoom-out' : 'max-h-full max-w-full object-contain cursor-zoom-in'}`} />
+        {!loaded && <span className="spinner absolute left-1/2 top-1/2 -ml-2 -mt-2 text-white" aria-label="Loading the big photo" />}
+      </div>
+      <p className="px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 text-center text-[11px] text-white/60">{zoom ? 'Tap to zoom out' : 'Tap the photo to zoom in'}{credit ? ` · ${credit}` : ''}</p>
+    </div>,
+    document.body,
+  );
+}
