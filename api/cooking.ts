@@ -1,7 +1,8 @@
 import { guard, json } from '../server/guard.js';
 import { findRecipes, seeIngredients } from '../server/cooking.js';
 import { recipePhoto } from '../server/photo.js';
-import { delRecipe, getSettings, pantry, putPantry, putRecipe, putShopping, recipes, shopping } from '../server/store.js';
+import { drawDish, keepDrawing } from '../server/draw.js';
+import { delRecipe, getSettings, pantry, putPantry, putPhoto, putRecipe, putShopping, recipes, shopping } from '../server/store.js';
 import type { Provider, Recipe, ShopItem } from '../src/lib/types.js';
 
 const ID = /^[\w-]{2,60}$/;
@@ -19,12 +20,14 @@ export async function GET(req: Request): Promise<Response> {
 /**
  * POST { find: { ingredients, images, meal, cuisine, minutes, servings, kcal, protein, wish, model } } → recipes (not saved)
  * POST { see: { images } } → ingredients seen in the photos
+ * POST { draw: { title, summary, ingredients } } → an AI picture of the dish ({ key, image }) or { key, done } if already kept
+ * POST { drawn: { key, thumb, full } } → keep the AI picture (JPEGs shrunk on the phone)
  * POST { photo: { title, cuisine, query, skip } } → a free food photo matching the dish (or null); skip = photos to leave out ("Another photo")
  * POST { recipe } → save to Recipes · { pantry: [] } · { shopping: [] }
  */
 export async function POST(req: Request): Promise<Response> {
-  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; photo?: { title?: string; cuisine?: string; query?: string; skip?: string[] }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
-  const blocked = guard(req, 'cooking', b.find || b.see ? 15 : 90);
+  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; photo?: { title?: string; cuisine?: string; query?: string; skip?: string[] }; draw?: { title?: string; summary?: string; ingredients?: string[] }; drawn?: { key?: string; thumb?: string; full?: string }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
+  const blocked = guard(req, 'cooking', b.find || b.see || b.draw ? 15 : 90);
   if (blocked) return blocked;
   try {
     const s = await getSettings();
@@ -41,6 +44,18 @@ export async function POST(req: Request): Promise<Response> {
       const images = imgs(b.see.images);
       if (!images.length) return json({ error: 'Add a photo first.' }, 400);
       return json(await seeIngredients(images, s, b.see.kind === 'receipt' ? 'receipt' : 'kitchen'));
+    }
+    if (b.draw) {
+      const title = String(b.draw.title ?? '').trim().slice(0, 90);
+      if (!title) return json({ error: 'Bad request' }, 400);
+      return json(await drawDish({ title, summary: String(b.draw.summary ?? '').slice(0, 300), ingredients: list(b.draw.ingredients, 20) }, s));
+    }
+    if (b.drawn) {
+      const k = String(b.drawn.key ?? '');
+      const jpg = /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/;
+      if (!/^[a-f0-9]{24}$/.test(k) || !jpg.test(b.drawn.thumb ?? '') || !jpg.test(b.drawn.full ?? '') || (b.drawn.full ?? '').length > 900_000) return json({ error: 'Bad picture' }, 400);
+      await keepDrawing(k, putPhoto, b.drawn.thumb!, b.drawn.full!);
+      return json({ ok: true });
     }
     if (b.photo) {
       const title = String(b.photo.title ?? '').trim().slice(0, 90);
@@ -61,7 +76,7 @@ export async function POST(req: Request): Promise<Response> {
       return json({ ok: true });
     }
     return json({ error: 'Bad request' }, 400);
-  } catch (e) { return fail(e, b.find || b.see ? 502 : 500); }
+  } catch (e) { return fail(e, b.find || b.see || b.draw ? 502 : 500); }
 }
 
 /** DELETE ?id → remove a saved recipe */

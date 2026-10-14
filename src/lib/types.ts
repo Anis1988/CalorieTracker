@@ -97,6 +97,9 @@ export interface Cooking {
   units: 'metric' | 'us';
   staples: string[]; // always in the kitchen (salt, oil…)
   fitDay: boolean; // aim at what's left of today's calories by default
+  pictures: 'real' | 'opened' | 'all'; // free photos only · AI picture when a recipe is opened/saved · AI for every recipe
+  aiPicsPerDay: number; // most AI pictures a day (each costs about 4 cents)
+  imageModel: string; // Gemini model that draws them
 }
 export const DIETS = ['Vegetarian', 'Vegan', 'Pescatarian', 'High protein', 'Low carb', 'Keto', 'Mediterranean', 'Halal', 'Kosher', 'Gluten-free', 'Dairy-free'];
 export const ALLERGIES = ['Peanuts', 'Tree nuts', 'Gluten', 'Dairy', 'Eggs', 'Fish', 'Shellfish', 'Soy', 'Sesame'];
@@ -105,7 +108,8 @@ export const CUISINES = ['Any', 'Mediterranean', 'Italian', 'Mexican', 'Middle E
 export const MEAL_KINDS = ['Any', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 
 /** A real photo of the dish (Pexels / Pixabay / Wikimedia): small for cards, big for full screen. */
-export interface RecipePhoto { thumb: string; full: string; credit: string; link: string; v?: number } // v 2 = matched to the dish
+/** thumb/full are web addresses, or "ai:<id>" for an AI picture kept on the server (shown via /api/entries?photo=). */
+export interface RecipePhoto { thumb: string; full: string; credit: string; link: string; v?: number; ai?: boolean } // v 2 = matched to the dish
 export interface RecipeIngredient { name: string; qty: number | null; unit: string; have: boolean; sub: string }
 export interface Recipe {
   id: string;
@@ -211,7 +215,7 @@ export const DEFAULT_SETTINGS: Settings = {
   photos: { keep: true, days: 90 },
   display: { theme: 'auto', weekStart: 1, healthScore: true, macros: true },
   water: { on: true, step: 250 },
-  cooking: { on: true, diet: '', allergies: [], dislikes: [], tools: ['Oven', 'Stove', 'Microwave'], servings: 2, maxTime: 0, skill: 'any', count: 6, units: 'metric', staples: ['Salt', 'Pepper', 'Olive oil', 'Water'], fitDay: false },
+  cooking: { on: true, diet: '', allergies: [], dislikes: [], tools: ['Oven', 'Stove', 'Microwave'], servings: 2, maxTime: 0, skill: 'any', count: 6, units: 'metric', staples: ['Salt', 'Pepper', 'Olive oil', 'Water'], fitDay: false, pictures: 'opened', aiPicsPerDay: 10, imageModel: 'gemini-2.5-flash-image' },
   beauty: { on: true, skinType: 'normal', sensitive: false, concerns: [], avoid: [], tone: '', undertone: '', fragranceFree: false, vegan: false, pregnancy: false },
 };
 
@@ -250,5 +254,5 @@ export const modelName = (p: Provider, id: string) =>
 export interface Status {
   store: boolean;
   keys: { gemini: boolean; claude: boolean };
-  used: { gemini: number; claude: number }; // AI reads today
+  used: { gemini: number; claude: number; image?: number }; // AI reads today (image = AI recipe pictures)
 }

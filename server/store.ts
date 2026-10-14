@@ -138,8 +138,8 @@ export const putShopping = async (l: ShopItem[]) => void (await need().set('ct:s
 
 // ---------- AI: daily limits and the answer cache ----------
 const today = () => new Date().toISOString().slice(0, 10);
-export const aiUsed = async (p: Provider) => Number((await db()?.get<number>(`ct:ai:${today()}:${p}`)) ?? 0);
-export async function countAi(p: Provider) {
+export const aiUsed = async (p: Provider | 'image') => Number((await db()?.get<number>(`ct:ai:${today()}:${p}`)) ?? 0);
+export async function countAi(p: Provider | 'image') {
   const r = need();
   const k = `ct:ai:${today()}:${p}`;
   await r.incr(k);

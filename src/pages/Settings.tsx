@@ -238,6 +238,12 @@ function KitchenFold() {
         <Field label="Recipes per search" hint="Fewer is quicker and cheaper"><Seg label="Recipes per search" options={[[4, '4'], [6, '6'], [8, '8']]} value={c.count} onChange={(v) => set({ count: v })} className="w-40" /></Field>
         <Field label="Amounts in"><Seg label="Recipe units" options={[['metric', 'g / ml'], ['us', 'cups / oz']]} value={c.units} onChange={(v) => set({ units: v })} className="w-48" /></Field>
         <Field label="Fit my day, every time" hint="Recipes aim at what’s left of today’s calories"><Toggle on={c.fitDay} onChange={(v) => set({ fitDay: v })} label="Fit my day by default" /></Field>
+        <div className="py-2">
+          <p className="text-sm font-semibold">Recipe pictures</p>
+          <p className="mb-1.5 text-xs muted">Real photos are free. An AI picture shows the exact dish (Gemini, about 4 cents, made once and kept).</p>
+          <Seg label="Recipe pictures" options={[['real', 'Real only'], ['opened', 'AI on open'], ['all', 'AI for all']]} value={c.pictures} onChange={(v) => set({ pictures: v })} />
+        </div>
+        {c.pictures !== 'real' && <Field label="AI pictures a day, at most" hint={`Made today: ${st.status?.used.image ?? 0}`}><NumberBox label="AI pictures a day" value={c.aiPicsPerDay} min={0} max={200} onChange={(n) => set({ aiPicsPerDay: n })} /></Field>}
       </div>
     </Fold>
   );
