@@ -21,7 +21,7 @@ export async function GET(req: Request): Promise<Response> {
  * POST { recipe } → save to Recipes · { pantry: [] } · { shopping: [] }
  */
 export async function POST(req: Request): Promise<Response> {
-  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[] }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
+  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
   const blocked = guard(req, 'cooking', b.find || b.see ? 15 : 60);
   if (blocked) return blocked;
   try {
@@ -38,7 +38,7 @@ export async function POST(req: Request): Promise<Response> {
     if (b.see) {
       const images = imgs(b.see.images);
       if (!images.length) return json({ error: 'Add a photo first.' }, 400);
-      return json(await seeIngredients(images, s));
+      return json(await seeIngredients(images, s, b.see.kind === 'receipt' ? 'receipt' : 'kitchen'));
     }
     if (b.recipe) {
       const r = b.recipe;

@@ -2,8 +2,9 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useStore } from '../lib/store';
 import { shortDay } from '../lib/date';
 import { avoidHits } from '../lib/avoid';
+import { clashes } from '../lib/clash';
 import { SHELF_STATUS, type BeautyCheck, type ShelfItem, type ShelfStatus } from '../lib/types';
-import { BeautyResult, CheckSheet, ShelfRow, ShelfSheet, SkinProfile, profileLine, recentChecks, routine, soonExpiring } from '../components/Beauty';
+import { BeautyResult, CheckSheet, ClashList, ShelfRow, ShelfSheet, SkinProfile, profileLine, recentChecks, routine, soonExpiring } from '../components/Beauty';
 import { Fold, ICONS, Icon } from '../components/ui';
 
 /** 💄 Check (Beauty's home): your skin in one line, the big button, recent checks, what's expiring. */
@@ -86,11 +87,17 @@ export function Shelf() {
 export function Skin() {
   const st = useStore();
   const r = useMemo(() => routine(st.shelf), [st.shelf]);
+  const mix = useMemo(() => clashes(st.shelf.filter((x) => x.status === 'using' || x.status === 'loved')), [st.shelf]);
   return (
     <div className="mx-auto max-w-xl space-y-3.5">
       <h1 className="text-2xl font-semibold">My skin</h1>
       <section className="card rise"><SkinProfile /></section>
-      <section className="card rise rise-1 space-y-3">
+      <section className="card rise rise-1 space-y-2">
+        <h2 className="font-display text-[17px] font-semibold">🧪 Mixing check</h2>
+        <p className="text-xs muted">Products you use (or love) that shouldn’t go on at the same time, and what to do. Checked from their ingredients, free.</p>
+        <ClashList list={mix} empty={r.am.length || r.pm.length ? '✅ No clashes in what you use.' : 'Mark products as “Using” on My shelf to check them.'} />
+      </section>
+      <section className="card rise rise-2 space-y-3">
         <h2 className="font-display text-[17px] font-semibold">🌗 My routine</h2>
         {!r.am.length && !r.pm.length ? <p className="text-sm muted">Mark products as “Using” or “Loved it” on My shelf and your morning and evening routine shows here, in the right order.</p> : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -166,6 +173,11 @@ export function BeautyGuide() {
         <P>Save each product as <b>Using</b>, <b>Loved it</b>, <b>Want to try</b>, <b>Didn’t suit me</b> or <b>Just checked</b>. For products you use, add the day you opened it and how long it lasts (the little open-jar symbol, like “12M”): you’ll see when it’s time to replace it.</P>
         <Example caption="Made-up shelf."><div>{SHELF_EX.map((x) => <ShelfRow key={x.id} x={x} />)}</div></Example>
         <P>The <b>Skin</b> tab puts what you use in order for the morning and evening (cleanser, serum, moisturizer, sunscreen…).</P>
+      </Fold>
+
+      <Fold icon="🧪" title="Mixing check">
+        <P>Some ingredients don’t go well together, like retinol with exfoliating acids, or benzoyl peroxide with vitamin C. The <b>Skin</b> tab checks everything you mark as Using or Loved, and when you check a new product it’s compared with what you use. ⛔ means use them apart, ⚠️ means take care, ℹ️ is just good to know. Free: read from the ingredients, no AI.</P>
+        <Example caption="Made-up clash between two products."><ClashList list={clashes([{ id: 'a', product: 'Example Night Retinol', category: 'Serum', ingredients: ['Aqua', 'Retinol'] }, { id: 'b', product: 'Example Glow Toner', category: 'Toner', ingredients: ['Aqua', 'Glycolic Acid'] }])} /></Example>
       </Fold>
 
       <Fold icon="🤖" title="The AI and what it costs">
