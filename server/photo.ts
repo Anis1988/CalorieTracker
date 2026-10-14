@@ -2,8 +2,8 @@ import { getCache, putCache } from './store.js';
 import type { RecipePhoto } from '../src/lib/types.js';
 
 /**
- * 🖼️ A real food photo for a recipe (free). Candidates come from Pixabay (PIXABAY_API_KEY), Pexels (PEXELS_API_KEY)
- * and Wikimedia Commons (no key); each is scored on how many of the dish's words its description/tags contain, and
+ * 🖼️ A real food photo for a recipe (free). Candidates come from Unsplash (UNSPLASH_ACCESS_KEY, the best food photos),
+ * Pixabay (PIXABAY_API_KEY), Pexels (PEXELS_API_KEY) and Wikimedia Commons (no key); each is scored on how many of the dish's words its description/tags contain, and
  * only a photo that clearly matches the dish is used: better no photo than a random "food" picture.
  * Search words: the AI's photo phrase for the dish (photoQuery) first, then the title. Remembered 30 days per dish.
  */
@@ -12,7 +12,21 @@ const words = (s: string) => [...new Set(s.toLowerCase().replace(/[^a-z\s-]/g, '
 const stem = (w: string) => w.replace(/(es|s)$/, '');
 const scoreOf = (text: string, want: string[]) => { const t = text.toLowerCase(); return want.filter((w) => t.includes(stem(w))).length; };
 
-interface Cand extends RecipePhoto { score: number }
+interface Cand extends RecipePhoto { score: number; ping?: string }
+
+/** Unsplash: Client-ID key; their rules: credit the photographer, and "ping" the photo's download link when it's used. */
+async function unsplash(q: string, want: string[]): Promise<Cand[]> {
+  const key = process.env.UNSPLASH_ACCESS_KEY?.trim();
+  if (!key) return [];
+  const r = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=20&content_filter=high`, { headers: { Authorization: `Client-ID ${key}`, 'Accept-Version': 'v1' }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) return [];
+  const j = (await r.json()) as { results?: { slug?: string; alt_description?: string | null; description?: string | null; tags?: { title?: string }[]; urls: { small: string; regular: string }; user: { name: string; links: { html: string } }; links: { html: string; download_location: string } }[] };
+  const utm = '?utm_source=calorie_tracker&utm_medium=referral';
+  return (j.results ?? []).map((p) => ({
+    thumb: p.urls.small, full: p.urls.regular, credit: `Photo: ${p.user.name} · Unsplash`, link: p.user.links.html + utm, ping: p.links.download_location,
+    score: scoreOf(`${p.alt_description ?? ''} ${p.description ?? ''} ${p.slug ?? ''} ${(p.tags ?? []).map((t) => t.title ?? '').join(' ')}`, want),
+  }));
+}
 
 async function pixabay(q: string, want: string[]): Promise<Cand[]> {
   const key = process.env.PIXABAY_API_KEY?.trim();
@@ -53,13 +67,14 @@ async function candidates(title: string, query: string, cuisine: string): Promis
   const seen = new Set<string>();
   let all: Cand[] = [];
   for (const q of queries) {
-    const got = (await Promise.all([pixabay(q, want), pexels(q, want), wikimedia(q, want)].map((p) => p.catch(() => [] as Cand[])))).flat();
+    const got = (await Promise.all([unsplash(q, want), pixabay(q, want), pexels(q, want), wikimedia(q, want)].map((p) => p.catch(() => [] as Cand[])))).flat();
     for (const c of got) if (!seen.has(c.full)) { seen.add(c.full); all.push(c); }
     if (all.some((c) => c.score >= Math.max(need, Math.min(3, want.length)))) break; // a strong match: no need to search more
   }
   all = all.filter((c) => c.score >= need);
-  // Higher score first; on a tie, Pixabay/Pexels (consistent food photography) before Wikimedia.
-  return all.sort((a, b) => b.score - a.score || Number(/Wikimedia/.test(a.credit)) - Number(/Wikimedia/.test(b.credit)));
+  // Higher score first; on a tie Unsplash, then Pixabay/Pexels, then Wikimedia.
+  const rank = (c: Cand) => (/Unsplash/.test(c.credit) ? 0 : /Wikimedia/.test(c.credit) ? 2 : 1);
+  return all.sort((a, b) => b.score - a.score || rank(a) - rank(b));
 }
 
 export async function recipePhoto(title: string, cuisine = '', query = '', skip: string[] = []): Promise<RecipePhoto | null> {
@@ -70,6 +85,7 @@ export async function recipePhoto(title: string, cuisine = '', query = '', skip:
   }
   const list = await candidates(title, query || title, cuisine);
   const pick = list.find((c) => !skip.includes(c.full)) ?? null;
+  if (pick?.ping) void fetch(pick.ping, { headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY?.trim()}` } }).catch(() => undefined);
   const out: RecipePhoto | null = pick ? { thumb: pick.thumb, full: pick.full, credit: pick.credit, link: pick.link, v: 2 } : null;
   if (!skip.length) await putCache(key, out ?? { none: true }, out ? 30 : 3);
   return out;

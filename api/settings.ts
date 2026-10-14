@@ -9,7 +9,7 @@ export async function GET(req: Request): Promise<Response> {
   const status: Status = {
     store: storeReady(),
     keys: { gemini: !!process.env.GEMINI_API_KEY?.trim(), claude: !!process.env.ANTHROPIC_API_KEY?.trim() },
-    used: storeReady() ? { gemini: await aiUsed('gemini'), claude: await aiUsed('claude') } : { gemini: 0, claude: 0 },
+    used: storeReady() ? { gemini: await aiUsed('gemini'), claude: await aiUsed('claude'), image: await aiUsed('image') } : { gemini: 0, claude: 0, image: 0 },
   };
   return json({ settings: await getSettings(), status });
 }

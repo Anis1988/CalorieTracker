@@ -8,6 +8,7 @@ import type { Entry, Recipe, RecipeIngredient, RecipePhoto, ShopItem } from '../
 import { MacroLine } from './Food';
 import { ICONS, Icon, PhotoViewer, Sheet, toast } from './ui';
 import { api } from '../lib/api';
+import { shrink } from '../lib/image';
 
 /** 🍳 Cooking pieces. Each is also drawn in the Cooking guide with a made-up recipe. */
 
@@ -40,9 +41,48 @@ export function findPhoto(r: Pick<Recipe, 'title' | 'cuisine' | 'photoQuery'>): 
 /** Photos found before matching got stricter (no "v") are looked for again. */
 export const needsPhoto = (r: Pick<Recipe, 'photo'>) => r.photo === undefined || (!!r.photo && !r.photo.v);
 
+/**
+ * 🎨 An AI picture of the exact dish (Gemini, about 4 cents, once per dish): the picture comes back full size, is shrunk
+ * on the phone (a small and a big JPEG) and kept on the server. Same dish again = the kept picture, free.
+ */
+const drawAsks = new Map<string, Promise<RecipePhoto | null>>();
+export function drawPhoto(r: Pick<Recipe, 'title' | 'summary' | 'ingredients'>): Promise<RecipePhoto | null> {
+  const k = r.title.toLowerCase();
+  let p = drawAsks.get(k);
+  if (!p) {
+    p = (async () => {
+      const d = await api.drawDish({ title: r.title, summary: r.summary, ingredients: r.ingredients.map((g) => g.name) });
+      if (!d.done && d.image) {
+        const [thumb, full] = await Promise.all([shrink(await (await fetch(d.image)).blob(), 400, 0.78), shrink(await (await fetch(d.image)).blob(), 1280, 0.85)]);
+        await api.keepDrawing(d.key, thumb, full);
+      }
+      return { thumb: `ai:draw-${d.key}-t`, full: `ai:draw-${d.key}-f`, credit: 'Picture made by AI (Gemini)', link: '', v: 2, ai: true };
+    })();
+    p.catch(() => drawAsks.delete(k));
+    drawAsks.set(k, p);
+  }
+  return p;
+}
+
+/** A picture address: a web address as is, an AI picture ("ai:<id>") fetched from the server (with the access code). */
+export function useSrc(src?: string): string | undefined {
+  const st = useStore();
+  const [out, setOut] = useState<string | undefined>(src && !src.startsWith('ai:') ? src : undefined);
+  useEffect(() => {
+    if (!src) return setOut(undefined);
+    if (!src.startsWith('ai:')) return setOut(src);
+    let live = true;
+    void st.photo(src.slice(3)).then((u) => live && setOut(u ?? undefined));
+    return () => { live = false; };
+  }, [src]); // eslint-disable-line react-hooks/exhaustive-deps
+  return out;
+}
+
 /** The small photo on a card (a soft placeholder while it's being found). */
 function RecipeThumb({ r }: { r: Recipe }) {
-  if (r.photo && r.photo.v) return <img src={r.photo.thumb} alt="" loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />;
+  const src = useSrc(r.photo && r.photo.v ? r.photo.thumb : undefined);
+  if (src) return <img src={src} alt="" loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />;
+  if (r.photo && r.photo.v) return <span className="h-[72px] w-[72px] shrink-0 animate-pulse rounded-2xl" style={{ background: 'var(--trk)' }} aria-hidden="true" />;
   return <span className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-2xl ${needsPhoto(r) ? 'animate-pulse' : ''}`} style={{ background: 'var(--trk)' }} aria-hidden="true">🍽️</span>;
 }
 
@@ -97,15 +137,27 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
     } catch (e) { toast('err', errText(e)); }
     setAnother(false);
   };
+  const [drawing, setDrawing] = useState(false);
+  const keepPhoto = (photo: RecipePhoto | null) => {
+    setR((x) => ({ ...x, photo }));
+    const m = st.recipes.find((x) => x.id === r.id);
+    if (m) void st.saveRecipe({ ...m, photo }).catch(() => undefined);
+  };
   // A recipe without a photo yet (e.g. saved before photos existed): find one, and keep it with the saved recipe.
+  // Then, when Settings → Cooking → Recipe pictures asks for it, an AI picture of the exact dish replaces it.
   useEffect(() => {
-    if (!needsPhoto(r)) return;
-    void findPhoto(r).then((photo) => {
-      setR((x) => ({ ...x, photo }));
-      const m = st.recipes.find((x) => x.id === r.id);
-      if (m) void st.saveRecipe({ ...m, photo }).catch(() => undefined);
-    });
+    let live = true;
+    void (async () => {
+      if (needsPhoto(r)) { const photo = await findPhoto(r); if (live) keepPhoto(photo); }
+      if (st.settings.cooking.pictures === 'real' || r.photo?.ai) return;
+      if (live) setDrawing(true);
+      try { const photo = await drawPhoto(r); if (live && photo) keepPhoto(photo); } catch { /* daily limit or no key: the real photo stays */ }
+      if (live) setDrawing(false);
+    })();
+    return () => { live = false; };
   }, [r.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bannerSrc = useSrc(r.photo && r.photo.v ? r.photo.thumb : undefined);
+  const fullSrc = useSrc(big && r.photo && r.photo.v ? r.photo.full : undefined);
   const [servings, setServings] = useState(r.servings);
   const [cook, setCook] = useState(false);
   const [eat, setEat] = useState(false);
@@ -126,14 +178,15 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
       <div className="space-y-4">
         {r.photo && r.photo.v ? (
           <button className="tap relative block w-full overflow-hidden rounded-3xl" onClick={() => setBig(true)} aria-label={`See the photo of ${r.title} full screen`}>
-            <img src={r.photo.thumb} alt={r.title} className="h-48 w-full object-cover sm:h-60" />
+            {bannerSrc ? <img src={bannerSrc} alt={r.title} className="h-48 w-full object-cover sm:h-60" /> : <div className="h-48 w-full animate-pulse" style={{ background: 'var(--trk)' }} />}
+            {drawing && <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white"><span className="spinner !h-3 !w-3" /> Drawing this dish…</span>}
             <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white">⤢ Full screen</span>
           </button>
         ) : needsPhoto(r) ? <div className="h-48 w-full animate-pulse rounded-3xl" style={{ background: 'var(--trk)' }} aria-hidden="true" /> : null}
         {r.photo && r.photo.v && (
           <p className="-mt-3 flex items-center justify-end gap-2 text-[10px] muted">
-            <span>{r.photo.credit} · photo of a similar dish</span>
-            <button className="font-bold underline" disabled={another} onClick={() => void anotherPhoto()}>{another ? 'Looking…' : '↻ Another photo'}</button>
+            <span>{r.photo.ai ? '🎨 Picture made by AI for this recipe' : `${r.photo.credit} · photo of a similar dish`}</span>
+            {!r.photo.ai && <button className="font-bold underline" disabled={another} onClick={() => void anotherPhoto()}>{another ? 'Looking…' : '↻ Another photo'}</button>}
           </p>
         )}
         <p className="text-sm muted">{r.summary}</p>
@@ -197,7 +250,7 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
       </div>
       {cook && <CookMode r={r} factor={factor} onClose={() => setCook(false)} onDone={() => { setCook(false); setEat(true); if (mine) void save({ cooked: (mine.cooked ?? 0) + 1, lastCooked: todayStr() }); }} />}
       {eat && <EatSheet r={r} onClose={() => setEat(false)} />}
-      {big && r.photo && r.photo.v && <PhotoViewer thumb={r.photo.thumb} full={r.photo.full} alt={r.title} credit={r.photo.credit} onClose={() => setBig(false)} />}
+      {big && bannerSrc && fullSrc && r.photo && <PhotoViewer thumb={bannerSrc} full={fullSrc} alt={r.title} credit={r.photo.credit} onClose={() => setBig(false)} />}
     </Sheet>
   );
 }

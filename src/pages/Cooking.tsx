@@ -5,7 +5,7 @@ import { forAi, thumb } from '../lib/image';
 import { todayStr } from '../lib/date';
 import { macroGoals, sum } from '../lib/nutrition';
 import { CUISINES, MEAL_KINDS, type Provider, type Recipe, type RecipeSearch } from '../lib/types';
-import { ChipInput, RecipeCard, RecipeSheet, findPhoto, needsPhoto } from '../components/Cooking';
+import { ChipInput, RecipeCard, RecipeSheet, drawPhoto, findPhoto, needsPhoto } from '../components/Cooking';
 import { Fold, ICONS, Icon, Toggle, toast } from '../components/ui';
 
 /** 🍳 Cook: what you have (typed, your pantry, photos) → recipes, the ones you can make now first. */
@@ -34,14 +34,16 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
   // 🖼️ A photo for each recipe that doesn't have one yet (free, in the background).
   useEffect(() => {
     if (!res) return;
+    const put = (id: string, photo: Recipe['photo']) => setRes((cur) => {
+      if (!cur) return cur;
+      const next = { ...cur, recipes: cur.recipes.map((x) => (x.id === id ? { ...x, photo } : x)) };
+      try { sessionStorage.setItem('ct.cookRes', JSON.stringify(next)); } catch { /* too big or private mode */ }
+      return next;
+    });
     for (const r of res.recipes) {
-      if (!needsPhoto(r)) continue;
-      void findPhoto(r).then((photo) => setRes((cur) => {
-        if (!cur) return cur;
-        const next = { ...cur, recipes: cur.recipes.map((x) => (x.id === r.id ? { ...x, photo } : x)) };
-        try { sessionStorage.setItem('ct.cookRes', JSON.stringify(next)); } catch { /* too big or private mode */ }
-        return next;
-      }));
+      if (needsPhoto(r)) void findPhoto(r).then((photo) => put(r.id, photo));
+      // "AI for every recipe": each card gets its own AI picture too (it replaces the free photo when ready).
+      if (c.pictures === 'all' && !r.photo?.ai) void drawPhoto(r).then((photo) => photo && put(r.id, photo)).catch(() => undefined);
     }
   }, [res?.recipes.map((x) => x.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -303,7 +305,8 @@ export function CookingGuide() {
         <P><b>Fit my day</b> uses what’s left of today in 🥗 Calories, so the recipes fit your goal (and help your protein). It takes 20 to 60 seconds: the AI writes every recipe in full. The same search again is free.</P>
       </Fold>
       <Fold icon="👩‍🍳" title="Cooking a recipe">
-        <P>Each recipe gets a <b>photo</b>: a real food photo of the same kind of dish (free, from Pixabay, Pexels or Wikimedia). Only a photo that clearly matches the dish is used; if none does, you see 🍽️ instead of a random picture. Open the recipe and tap the photo to see it <b>full screen</b> in high quality; tap again to zoom in. Not quite right? Tap <b>↻ Another photo</b>.</P>
+        <P>Each recipe gets a <b>picture</b>. In the list: a real food photo of the same kind of dish (free, from Unsplash, Pixabay, Pexels or Wikimedia; only a clear match, else 🍽️). When you <b>open a recipe</b>, the AI also draws a picture of that exact dish (🎨, about 4 cents, made once and kept with the recipe). Tap the picture to see it <b>full screen</b> in high quality; tap again to zoom in.</P>
+        <P>Settings → Cooking → <b>Recipe pictures</b>: real photos only (free), AI when you open a recipe, or AI for every recipe in the list; and how many AI pictures a day at most.</P>
         <P>Open a recipe to see the ingredients (✅ have, 🛒 missing, with swaps), the steps and the nutrition. Change the servings with − and +: the amounts follow.</P>
         <P><b>Start cooking</b> shows one big step at a time and keeps your screen on. When a step says “10 minutes”, tap the timer: the phone buzzes and beeps when it’s done. At the end you can log what you ate.</P>
       </Fold>
