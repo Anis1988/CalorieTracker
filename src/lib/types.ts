@@ -104,6 +104,8 @@ export const TOOLS = ['Oven', 'Stove', 'Microwave', 'Air fryer', 'Blender', 'Slo
 export const CUISINES = ['Any', 'Mediterranean', 'Italian', 'Mexican', 'Middle Eastern', 'North African', 'Indian', 'Chinese', 'Japanese', 'Thai', 'American', 'French'];
 export const MEAL_KINDS = ['Any', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 
+/** A real photo of the dish (Pexels / Pixabay / Wikimedia): small for cards, big for full screen. */
+export interface RecipePhoto { thumb: string; full: string; credit: string; link: string }
 export interface RecipeIngredient { name: string; qty: number | null; unit: string; have: boolean; sub: string }
 export interface Recipe {
   id: string;
@@ -121,6 +123,7 @@ export interface Recipe {
   tags: string[];
   allergyHits: string[]; // from your allergies (free check)
   by?: string;
+  photo?: RecipePhoto | null; // null = looked for, none found
   // saved in Recipes
   createdAt?: string;
   fav?: boolean;

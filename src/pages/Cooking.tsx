@@ -5,7 +5,7 @@ import { forAi, thumb } from '../lib/image';
 import { todayStr } from '../lib/date';
 import { macroGoals, sum } from '../lib/nutrition';
 import { CUISINES, MEAL_KINDS, type Provider, type Recipe, type RecipeSearch } from '../lib/types';
-import { ChipInput, RecipeCard, RecipeSheet } from '../components/Cooking';
+import { ChipInput, RecipeCard, RecipeSheet, findPhoto } from '../components/Cooking';
 import { Fold, ICONS, Icon, Toggle, toast } from '../components/ui';
 
 /** 🍳 Cook: what you have (typed, your pantry, photos) → recipes, the ones you can make now first. */
@@ -31,6 +31,19 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
 
   useEffect(() => { try { sessionStorage.setItem('ct.cookItems', JSON.stringify(items)); } catch { /* private mode */ } }, [items]);
   useEffect(() => { if (snap) { cam.current?.click(); setSnap(false); } }, [snap, setSnap]);
+  // 🖼️ A photo for each recipe that doesn't have one yet (free, in the background).
+  useEffect(() => {
+    if (!res) return;
+    for (const r of res.recipes) {
+      if (r.photo !== undefined) continue;
+      void findPhoto(r).then((photo) => setRes((cur) => {
+        if (!cur) return cur;
+        const next = { ...cur, recipes: cur.recipes.map((x) => (x.id === r.id ? { ...x, photo } : x)) };
+        try { sessionStorage.setItem('ct.cookRes', JSON.stringify(next)); } catch { /* too big or private mode */ }
+        return next;
+      }));
+    }
+  }, [res?.recipes.map((x) => x.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // What's left of today in Calories (for "Fit my day").
   const g = macroGoals(st.settings);
@@ -143,6 +156,9 @@ export function Recipes() {
   const [f, setF] = useState<'all' | 'fav' | 'cooked'>('all');
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<Recipe | null>(null);
+  useEffect(() => {
+    for (const r of st.recipes) if (r.photo === undefined) void findPhoto(r).then((photo) => void st.saveRecipe({ ...r, photo }).catch(() => undefined));
+  }, [st.recipes.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const list = st.recipes.filter((r) => (f === 'all' || (f === 'fav' ? r.fav : (r.cooked ?? 0) > 0)) && (!q.trim() || `${r.title} ${r.cuisine} ${r.tags.join(' ')} ${r.ingredients.map((g) => g.name).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase())));
   return (
     <div className="mx-auto max-w-xl space-y-3.5">
@@ -266,7 +282,7 @@ const EX: Recipe = {
   id: 'g1', title: 'Lemon Garlic Chicken & Rice', summary: 'Juicy one-pan chicken with fluffy lemony rice and wilted spinach.', cuisine: 'Mediterranean', meal: 'Dinner', minutes: 35, difficulty: 'easy', servings: 2,
   perServing: { calories: 560, protein: 42, carbs: 58, fat: 16, fiber: 3, sugar: 2 },
   ingredients: [{ name: 'chicken breast', qty: 300, unit: 'g', have: true, sub: '' }, { name: 'rice', qty: 150, unit: 'g', have: true, sub: '' }, { name: 'spinach', qty: 2, unit: 'cups', have: true, sub: '' }, { name: 'lemon', qty: 1, unit: 'piece', have: false, sub: '2 tbsp vinegar' }],
-  steps: ['Brown the chicken 6 minutes a side.', 'Add rice and stock, simmer 15 minutes.'], tips: [], tags: ['One pan', 'High protein'], allergyHits: [],
+  steps: ['Brown the chicken 6 minutes a side.', 'Add rice and stock, simmer 15 minutes.'], tips: [], tags: ['One pan', 'High protein'], allergyHits: [], photo: null,
 };
 const Example = ({ children, caption }: { children: ReactNode; caption: string }) => (
   <figure className="space-y-1.5"><div className="pointer-events-none select-none rounded-2xl border border-dashed p-2" style={{ borderColor: 'var(--bd)' }} aria-hidden="true">{children}</div><figcaption className="text-xs muted">{caption}</figcaption></figure>
@@ -287,6 +303,7 @@ export function CookingGuide() {
         <P><b>Fit my day</b> uses what’s left of today in 🥗 Calories, so the recipes fit your goal (and help your protein). It takes 20 to 60 seconds: the AI writes every recipe in full. The same search again is free.</P>
       </Fold>
       <Fold icon="👩‍🍳" title="Cooking a recipe">
+        <P>Each recipe gets a <b>photo</b> (a real food photo of a similar dish, free). Open the recipe and tap the photo to see it <b>full screen</b> in high quality; tap again to zoom in.</P>
         <P>Open a recipe to see the ingredients (✅ have, 🛒 missing, with swaps), the steps and the nutrition. Change the servings with − and +: the amounts follow.</P>
         <P><b>Start cooking</b> shows one big step at a time and keeps your screen on. When a step says “10 minutes”, tap the timer: the phone buzzes and beeps when it’s done. At the end you can log what you ate.</P>
       </Fold>

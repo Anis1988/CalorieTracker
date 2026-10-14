@@ -4,9 +4,10 @@ import { errText, newId } from '../lib/api';
 import { nowTime, todayStr } from '../lib/date';
 import { useStore } from '../lib/store';
 import { kcalText, mealAt } from '../lib/nutrition';
-import type { Entry, Recipe, RecipeIngredient, ShopItem } from '../lib/types';
+import type { Entry, Recipe, RecipeIngredient, RecipePhoto, ShopItem } from '../lib/types';
 import { MacroLine } from './Food';
-import { ICONS, Icon, Sheet, toast } from './ui';
+import { ICONS, Icon, PhotoViewer, Sheet, toast } from './ui';
+import { api } from '../lib/api';
 
 /** 🍳 Cooking pieces. Each is also drawn in the Cooking guide with a made-up recipe. */
 
@@ -28,11 +29,27 @@ export function amount(g: RecipeIngredient, factor: number): string {
   return `${txt}${g.unit ? (metric ? ' ' : ' ') + g.unit : ''}`.trim();
 }
 
+/** 🖼️ A recipe's photo, found once (free) and kept with the recipe. */
+const photoAsks = new Map<string, Promise<RecipePhoto | null>>();
+export function findPhoto(r: Pick<Recipe, 'title' | 'cuisine'>): Promise<RecipePhoto | null> {
+  const k = r.title.toLowerCase();
+  let p = photoAsks.get(k);
+  if (!p) { p = api.recipePhoto(r.title, r.cuisine).then((x) => x.photo).catch(() => null); photoAsks.set(k, p); }
+  return p;
+}
+
+/** The small photo on a card (a soft placeholder while it's being found). */
+function RecipeThumb({ r }: { r: Recipe }) {
+  if (r.photo) return <img src={r.photo.thumb} alt="" loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />;
+  return <span className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-2xl ${r.photo === undefined ? 'animate-pulse' : ''}`} style={{ background: 'var(--trk)' }} aria-hidden="true">🍽️</span>;
+}
+
 export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen?: () => void }) {
   const miss = missingOf(r);
   return (
     <button className="card tap block w-full !p-4 text-left" onClick={onOpen}>
       <div className="flex items-start gap-3">
+        <RecipeThumb r={r} />
         <div className="min-w-0 flex-1">
           <p className="font-display text-[17px] font-semibold leading-snug">{r.fav ? '⭐ ' : ''}{r.title}</p>
           <p className="mt-0.5 text-sm muted">{r.summary}</p>
@@ -55,8 +72,19 @@ export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen?: () => void }) {
 }
 
 /** One recipe: servings, ingredients (have / missing + swaps), nutrition, steps, and what you can do with it. */
-export function RecipeSheet({ r, onClose, saved }: { r: Recipe; onClose: () => void; saved?: boolean }) {
+export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () => void; saved?: boolean }) {
   const st = useStore();
+  const [r, setR] = useState(r0);
+  const [big, setBig] = useState(false);
+  // A recipe without a photo yet (e.g. saved before photos existed): find one, and keep it with the saved recipe.
+  useEffect(() => {
+    if (r.photo !== undefined) return;
+    void findPhoto(r).then((photo) => {
+      setR((x) => ({ ...x, photo }));
+      const m = st.recipes.find((x) => x.id === r.id);
+      if (m) void st.saveRecipe({ ...m, photo }).catch(() => undefined);
+    });
+  }, [r.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [servings, setServings] = useState(r.servings);
   const [cook, setCook] = useState(false);
   const [eat, setEat] = useState(false);
@@ -75,6 +103,13 @@ export function RecipeSheet({ r, onClose, saved }: { r: Recipe; onClose: () => v
   return (
     <Sheet title={r.title} onClose={onClose} wide>
       <div className="space-y-4">
+        {r.photo ? (
+          <button className="tap relative block w-full overflow-hidden rounded-3xl" onClick={() => setBig(true)} aria-label={`See the photo of ${r.title} full screen`}>
+            <img src={r.photo.thumb} alt={r.title} className="h-48 w-full object-cover sm:h-60" />
+            <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white">⤢ Full screen</span>
+          </button>
+        ) : r.photo === undefined ? <div className="h-48 w-full animate-pulse rounded-3xl" style={{ background: 'var(--trk)' }} aria-hidden="true" /> : null}
+        {r.photo && <p className="-mt-3 text-right text-[10px] muted">{r.photo.credit} · photo of a similar dish</p>}
         <p className="text-sm muted">{r.summary}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="chip !cursor-default">⏱ {r.minutes} min</span><span className="chip !cursor-default">{r.difficulty}</span>{r.cuisine && <span className="chip !cursor-default">{r.cuisine}</span>}
@@ -136,6 +171,7 @@ export function RecipeSheet({ r, onClose, saved }: { r: Recipe; onClose: () => v
       </div>
       {cook && <CookMode r={r} factor={factor} onClose={() => setCook(false)} onDone={() => { setCook(false); setEat(true); if (mine) void save({ cooked: (mine.cooked ?? 0) + 1, lastCooked: todayStr() }); }} />}
       {eat && <EatSheet r={r} onClose={() => setEat(false)} />}
+      {big && r.photo && <PhotoViewer thumb={r.photo.thumb} full={r.photo.full} alt={r.title} credit={r.photo.credit} onClose={() => setBig(false)} />}
     </Sheet>
   );
 }

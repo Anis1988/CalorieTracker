@@ -1,5 +1,6 @@
 import { guard, json } from '../server/guard.js';
 import { findRecipes, seeIngredients } from '../server/cooking.js';
+import { recipePhoto } from '../server/photo.js';
 import { delRecipe, getSettings, pantry, putPantry, putRecipe, putShopping, recipes, shopping } from '../server/store.js';
 import type { Provider, Recipe, ShopItem } from '../src/lib/types.js';
 
@@ -18,11 +19,12 @@ export async function GET(req: Request): Promise<Response> {
 /**
  * POST { find: { ingredients, images, meal, cuisine, minutes, servings, kcal, protein, wish, model } } → recipes (not saved)
  * POST { see: { images } } → ingredients seen in the photos
+ * POST { photo: { title, cuisine } } → a free food photo for the dish (or null)
  * POST { recipe } → save to Recipes · { pantry: [] } · { shopping: [] }
  */
 export async function POST(req: Request): Promise<Response> {
-  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
-  const blocked = guard(req, 'cooking', b.find || b.see ? 15 : 60);
+  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; photo?: { title?: string; cuisine?: string }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
+  const blocked = guard(req, 'cooking', b.find || b.see ? 15 : 90);
   if (blocked) return blocked;
   try {
     const s = await getSettings();
@@ -39,6 +41,11 @@ export async function POST(req: Request): Promise<Response> {
       const images = imgs(b.see.images);
       if (!images.length) return json({ error: 'Add a photo first.' }, 400);
       return json(await seeIngredients(images, s, b.see.kind === 'receipt' ? 'receipt' : 'kitchen'));
+    }
+    if (b.photo) {
+      const title = String(b.photo.title ?? '').trim().slice(0, 90);
+      if (!title) return json({ error: 'Bad request' }, 400);
+      return json({ photo: await recipePhoto(title, String(b.photo.cuisine ?? '').slice(0, 30)) }, 200, { 'Cache-Control': 'private, max-age=86400' });
     }
     if (b.recipe) {
       const r = b.recipe;

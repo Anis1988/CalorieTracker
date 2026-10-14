@@ -10,6 +10,7 @@ Snap a photo of your food: the AI lists every food and drink with its portion, c
    - `APP_ACCESS_TOKEN`: a long secret code you make up (you type it once on each device).
    - `GEMINI_API_KEY`: free from [Google AI Studio](https://aistudio.google.com/apikey).
    - `ANTHROPIC_API_KEY` (optional, paid backup): from [console.anthropic.com](https://console.anthropic.com).
+   - `PEXELS_API_KEY` (optional, free): recipe photos, from [pexels.com/api](https://www.pexels.com/api/) (or `PIXABAY_API_KEY`). Without one, photos come from Wikimedia Commons.
 4. **Deployments → Redeploy**. Open the site and type your access code.
 
 ## Run on your computer
