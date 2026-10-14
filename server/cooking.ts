@@ -28,6 +28,7 @@ const R = z.object({
   steps: z.array(z.string()).describe('Clear numbered steps; mention times like "10 minutes" and temperatures'),
   tips: z.array(z.string()).describe('0-2 short tips (make-ahead, swaps, serving)'),
   tags: z.array(z.string()).describe('2-4 short tags, e.g. "One pan", "High protein", "15 min"'),
+  photoQuery: z.string().describe('2-4 plain English words to find a stock photo of this exact dish as served, e.g. "chicken shawarma rice bowl", "shakshuka eggs tomato" (the dish name if it is well known)'),
 });
 const Answer = z.object({
   detected: z.array(z.string()).describe('Ingredients you can see in the photos (empty if no photos)'),
@@ -91,6 +92,7 @@ function clean(raw: unknown): Omit<RecipeSearch, 'by'> {
       steps: arr(r.steps).map((x) => str(x, 600)).filter(Boolean).slice(0, 25),
       tips: arr(r.tips).map((x) => str(x, 240)).filter(Boolean).slice(0, 3),
       tags: arr(r.tags).map((x) => str(x, 24)).filter(Boolean).slice(0, 5),
+      photoQuery: str(r.photoQuery, 60),
       allergyHits: [],
     };
   }).filter((r) => r.ingredients.length && r.steps.length);

@@ -19,11 +19,11 @@ export async function GET(req: Request): Promise<Response> {
 /**
  * POST { find: { ingredients, images, meal, cuisine, minutes, servings, kcal, protein, wish, model } } → recipes (not saved)
  * POST { see: { images } } → ingredients seen in the photos
- * POST { photo: { title, cuisine } } → a free food photo for the dish (or null)
+ * POST { photo: { title, cuisine, query, skip } } → a free food photo matching the dish (or null); skip = photos to leave out ("Another photo")
  * POST { recipe } → save to Recipes · { pantry: [] } · { shopping: [] }
  */
 export async function POST(req: Request): Promise<Response> {
-  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; photo?: { title?: string; cuisine?: string }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
+  const b = (await req.json().catch(() => ({}))) as { find?: Record<string, unknown> & { images?: string[]; ingredients?: string[] }; see?: { images?: string[]; kind?: string }; photo?: { title?: string; cuisine?: string; query?: string; skip?: string[] }; recipe?: Recipe; pantry?: string[]; shopping?: ShopItem[] };
   const blocked = guard(req, 'cooking', b.find || b.see ? 15 : 90);
   if (blocked) return blocked;
   try {
@@ -45,7 +45,8 @@ export async function POST(req: Request): Promise<Response> {
     if (b.photo) {
       const title = String(b.photo.title ?? '').trim().slice(0, 90);
       if (!title) return json({ error: 'Bad request' }, 400);
-      return json({ photo: await recipePhoto(title, String(b.photo.cuisine ?? '').slice(0, 30)) }, 200, { 'Cache-Control': 'private, max-age=86400' });
+      const skip = (Array.isArray(b.photo.skip) ? b.photo.skip : []).map(String).slice(0, 20);
+      return json({ photo: await recipePhoto(title, String(b.photo.cuisine ?? '').slice(0, 30), String(b.photo.query ?? '').trim().slice(0, 60), skip) }, 200, skip.length ? {} : { 'Cache-Control': 'private, max-age=86400' });
     }
     if (b.recipe) {
       const r = b.recipe;

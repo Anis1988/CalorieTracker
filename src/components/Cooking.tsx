@@ -31,17 +31,19 @@ export function amount(g: RecipeIngredient, factor: number): string {
 
 /** 🖼️ A recipe's photo, found once (free) and kept with the recipe. */
 const photoAsks = new Map<string, Promise<RecipePhoto | null>>();
-export function findPhoto(r: Pick<Recipe, 'title' | 'cuisine'>): Promise<RecipePhoto | null> {
+export function findPhoto(r: Pick<Recipe, 'title' | 'cuisine' | 'photoQuery'>): Promise<RecipePhoto | null> {
   const k = r.title.toLowerCase();
   let p = photoAsks.get(k);
-  if (!p) { p = api.recipePhoto(r.title, r.cuisine).then((x) => x.photo).catch(() => null); photoAsks.set(k, p); }
+  if (!p) { p = api.recipePhoto(r.title, r.cuisine, r.photoQuery).then((x) => x.photo).catch(() => null); photoAsks.set(k, p); }
   return p;
 }
+/** Photos found before matching got stricter (no "v") are looked for again. */
+export const needsPhoto = (r: Pick<Recipe, 'photo'>) => r.photo === undefined || (!!r.photo && !r.photo.v);
 
 /** The small photo on a card (a soft placeholder while it's being found). */
 function RecipeThumb({ r }: { r: Recipe }) {
-  if (r.photo) return <img src={r.photo.thumb} alt="" loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />;
-  return <span className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-2xl ${r.photo === undefined ? 'animate-pulse' : ''}`} style={{ background: 'var(--trk)' }} aria-hidden="true">🍽️</span>;
+  if (r.photo && r.photo.v) return <img src={r.photo.thumb} alt="" loading="lazy" className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover" />;
+  return <span className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl text-2xl ${needsPhoto(r) ? 'animate-pulse' : ''}`} style={{ background: 'var(--trk)' }} aria-hidden="true">🍽️</span>;
 }
 
 export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen?: () => void }) {
@@ -76,9 +78,28 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
   const st = useStore();
   const [r, setR] = useState(r0);
   const [big, setBig] = useState(false);
+  const [another, setAnother] = useState(false);
+  const [skipped, setSkipped] = useState<string[]>([]);
+  // Not the right dish? The next best matching photo (and it's kept with the recipe if saved).
+  const anotherPhoto = async () => {
+    if (!r.photo) return;
+    setAnother(true);
+    const skip = [...skipped, r.photo.full];
+    try {
+      const { photo } = await api.recipePhoto(r.title, r.cuisine, r.photoQuery, skip);
+      if (!photo) toast('info', 'No other matching photo found.');
+      else {
+        setSkipped(skip);
+        setR((x) => ({ ...x, photo }));
+        const m = st.recipes.find((x) => x.id === r.id);
+        if (m) void st.saveRecipe({ ...m, photo }).catch(() => undefined);
+      }
+    } catch (e) { toast('err', errText(e)); }
+    setAnother(false);
+  };
   // A recipe without a photo yet (e.g. saved before photos existed): find one, and keep it with the saved recipe.
   useEffect(() => {
-    if (r.photo !== undefined) return;
+    if (!needsPhoto(r)) return;
     void findPhoto(r).then((photo) => {
       setR((x) => ({ ...x, photo }));
       const m = st.recipes.find((x) => x.id === r.id);
@@ -103,13 +124,18 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
   return (
     <Sheet title={r.title} onClose={onClose} wide>
       <div className="space-y-4">
-        {r.photo ? (
+        {r.photo && r.photo.v ? (
           <button className="tap relative block w-full overflow-hidden rounded-3xl" onClick={() => setBig(true)} aria-label={`See the photo of ${r.title} full screen`}>
             <img src={r.photo.thumb} alt={r.title} className="h-48 w-full object-cover sm:h-60" />
             <span className="absolute bottom-2 right-2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white">⤢ Full screen</span>
           </button>
-        ) : r.photo === undefined ? <div className="h-48 w-full animate-pulse rounded-3xl" style={{ background: 'var(--trk)' }} aria-hidden="true" /> : null}
-        {r.photo && <p className="-mt-3 text-right text-[10px] muted">{r.photo.credit} · photo of a similar dish</p>}
+        ) : needsPhoto(r) ? <div className="h-48 w-full animate-pulse rounded-3xl" style={{ background: 'var(--trk)' }} aria-hidden="true" /> : null}
+        {r.photo && r.photo.v && (
+          <p className="-mt-3 flex items-center justify-end gap-2 text-[10px] muted">
+            <span>{r.photo.credit} · photo of a similar dish</span>
+            <button className="font-bold underline" disabled={another} onClick={() => void anotherPhoto()}>{another ? 'Looking…' : '↻ Another photo'}</button>
+          </p>
+        )}
         <p className="text-sm muted">{r.summary}</p>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="chip !cursor-default">⏱ {r.minutes} min</span><span className="chip !cursor-default">{r.difficulty}</span>{r.cuisine && <span className="chip !cursor-default">{r.cuisine}</span>}
@@ -171,7 +197,7 @@ export function RecipeSheet({ r: r0, onClose, saved }: { r: Recipe; onClose: () 
       </div>
       {cook && <CookMode r={r} factor={factor} onClose={() => setCook(false)} onDone={() => { setCook(false); setEat(true); if (mine) void save({ cooked: (mine.cooked ?? 0) + 1, lastCooked: todayStr() }); }} />}
       {eat && <EatSheet r={r} onClose={() => setEat(false)} />}
-      {big && r.photo && <PhotoViewer thumb={r.photo.thumb} full={r.photo.full} alt={r.title} credit={r.photo.credit} onClose={() => setBig(false)} />}
+      {big && r.photo && r.photo.v && <PhotoViewer thumb={r.photo.thumb} full={r.photo.full} alt={r.title} credit={r.photo.credit} onClose={() => setBig(false)} />}
     </Sheet>
   );
 }
