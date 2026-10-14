@@ -5,7 +5,7 @@ import { forAi, thumb } from '../lib/image';
 import { todayStr } from '../lib/date';
 import { macroGoals, sum } from '../lib/nutrition';
 import { CUISINES, MEAL_KINDS, type Provider, type Recipe, type RecipeSearch } from '../lib/types';
-import { ChipInput, RecipeCard, RecipeSheet, findPhoto } from '../components/Cooking';
+import { ChipInput, RecipeCard, RecipeSheet, findPhoto, needsPhoto } from '../components/Cooking';
 import { Fold, ICONS, Icon, Toggle, toast } from '../components/ui';
 
 /** 🍳 Cook: what you have (typed, your pantry, photos) → recipes, the ones you can make now first. */
@@ -35,7 +35,7 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
   useEffect(() => {
     if (!res) return;
     for (const r of res.recipes) {
-      if (r.photo !== undefined) continue;
+      if (!needsPhoto(r)) continue;
       void findPhoto(r).then((photo) => setRes((cur) => {
         if (!cur) return cur;
         const next = { ...cur, recipes: cur.recipes.map((x) => (x.id === r.id ? { ...x, photo } : x)) };
@@ -157,7 +157,7 @@ export function Recipes() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<Recipe | null>(null);
   useEffect(() => {
-    for (const r of st.recipes) if (r.photo === undefined) void findPhoto(r).then((photo) => void st.saveRecipe({ ...r, photo }).catch(() => undefined));
+    for (const r of st.recipes) if (needsPhoto(r)) void findPhoto(r).then((photo) => void st.saveRecipe({ ...r, photo }).catch(() => undefined));
   }, [st.recipes.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const list = st.recipes.filter((r) => (f === 'all' || (f === 'fav' ? r.fav : (r.cooked ?? 0) > 0)) && (!q.trim() || `${r.title} ${r.cuisine} ${r.tags.join(' ')} ${r.ingredients.map((g) => g.name).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase())));
   return (
@@ -303,7 +303,7 @@ export function CookingGuide() {
         <P><b>Fit my day</b> uses what’s left of today in 🥗 Calories, so the recipes fit your goal (and help your protein). It takes 20 to 60 seconds: the AI writes every recipe in full. The same search again is free.</P>
       </Fold>
       <Fold icon="👩‍🍳" title="Cooking a recipe">
-        <P>Each recipe gets a <b>photo</b> (a real food photo of a similar dish, free). Open the recipe and tap the photo to see it <b>full screen</b> in high quality; tap again to zoom in.</P>
+        <P>Each recipe gets a <b>photo</b>: a real food photo of the same kind of dish (free, from Pixabay, Pexels or Wikimedia). Only a photo that clearly matches the dish is used; if none does, you see 🍽️ instead of a random picture. Open the recipe and tap the photo to see it <b>full screen</b> in high quality; tap again to zoom in. Not quite right? Tap <b>↻ Another photo</b>.</P>
         <P>Open a recipe to see the ingredients (✅ have, 🛒 missing, with swaps), the steps and the nutrition. Change the servings with − and +: the amounts follow.</P>
         <P><b>Start cooking</b> shows one big step at a time and keeps your screen on. When a step says “10 minutes”, tap the timer: the phone buzzes and beeps when it’s done. At the end you can log what you ate.</P>
       </Fold>

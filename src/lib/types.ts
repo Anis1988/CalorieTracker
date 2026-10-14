@@ -105,7 +105,7 @@ export const CUISINES = ['Any', 'Mediterranean', 'Italian', 'Mexican', 'Middle E
 export const MEAL_KINDS = ['Any', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 
 /** A real photo of the dish (Pexels / Pixabay / Wikimedia): small for cards, big for full screen. */
-export interface RecipePhoto { thumb: string; full: string; credit: string; link: string }
+export interface RecipePhoto { thumb: string; full: string; credit: string; link: string; v?: number } // v 2 = matched to the dish
 export interface RecipeIngredient { name: string; qty: number | null; unit: string; have: boolean; sub: string }
 export interface Recipe {
   id: string;
@@ -124,6 +124,7 @@ export interface Recipe {
   allergyHits: string[]; // from your allergies (free check)
   by?: string;
   photo?: RecipePhoto | null; // null = looked for, none found
+  photoQuery?: string; // words to find a photo of this dish
   // saved in Recipes
   createdAt?: string;
   fav?: boolean;
