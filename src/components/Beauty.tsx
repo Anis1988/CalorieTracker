@@ -5,6 +5,7 @@ import { addDays, daysBetween, shortDay, todayStr } from '../lib/date';
 import { useStore } from '../lib/store';
 import { AVOID_IDEAS, CONCERNS, SHELF_STATUS, SKIN_TYPES, TONES, UNDERTONES, type Beauty, type BeautyCheck, type Provider, type ShelfItem, type ShelfStatus, type Verdict } from '../lib/types';
 import { ICONS, Icon, Sheet, Thumb, Toggle, toast } from './ui';
+import { clashes, type Clash } from '../lib/clash';
 
 /** 💄 Beauty pieces. Each is also drawn in the Beauty guide with made-up products. */
 
@@ -222,6 +223,7 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
       {stage === 'result' && r && (
         <div className="space-y-4">
           <BeautyResult r={r} photo={pics[0]?.small} />
+          <ShelfClash r={r} />
           <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--bd)' }}>
             <p className="text-sm font-bold">Save to My shelf as</p>
             <StatusPick value={status} onChange={setStatus} />
@@ -342,8 +344,40 @@ export function routine(items: ShelfItem[]) {
   const rank = (c: string) => { const i = ORDER.indexOf(c); return i < 0 ? 99 : i; };
   const mine = items.filter((x) => x.status === 'using' || x.status === 'loved').sort((a, b) => rank(a.category) - rank(b.category));
   const am = mine.filter((x) => !['Makeup remover', 'Mask', 'Exfoliant'].includes(x.category) && !/retin/i.test(x.ingredients.join(' ')));
-  const pm = mine.filter((x) => !MAKEUP.has(x.category) && x.category !== 'Sunscreen');
+  const pm = mine.filter((x) => !MAKEUP.has(x.category) && x.category !== 'Sunscreen' && !/ascorbic acid|ascorbyl/i.test(x.ingredients.join(' ')));
   return { am, pm };
 }
 export const soonExpiring = (items: ShelfItem[]) => items.map((x) => ({ x, e: expiry(x) })).filter((y): y is { x: ShelfItem; e: { date: string; left: number } } => !!y.e && y.e.left < 30).sort((a, b) => a.e.left - b.e.left);
 export const recentChecks = (items: ShelfItem[], days = 60) => items.filter((x) => x.createdAt.slice(0, 10) >= addDays(todayStr(), -days));
+
+/** 🧪 Products that shouldn't go on together (from My shelf), with what to do. */
+export function ClashList({ list, empty }: { list: Clash[]; empty?: string }) {
+  if (!list.length) return empty ? <p className="text-sm muted">{empty}</p> : null;
+  const style = { high: 'border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100', medium: 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100', low: 'text-stone-700 dark:text-stone-200' };
+  const icon = { high: '⛔', medium: '⚠️', low: 'ℹ️' };
+  return (
+    <ul className="space-y-2">
+      {list.map((c, i) => (
+        <li key={i} className={`rounded-2xl border p-3 text-sm ${style[c.level]}`} style={c.level === 'low' ? { borderColor: 'var(--bd)' } : undefined}>
+          <p className="font-bold"><span aria-hidden="true">{icon[c.level]} </span>{c.title}</p>
+          <p className="text-xs opacity-80">{c.a} + {c.b}</p>
+          <p className="mt-1">{c.tip}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The product being checked against what you use now. */
+function ShelfClash({ r }: { r: Pick<ShelfItem, 'product' | 'ingredients' | 'category'> }) {
+  const st = useStore();
+  const using = st.shelf.filter((x) => x.status === 'using' || x.status === 'loved');
+  const list = clashes(using, { ...r, id: 'new' });
+  if (!using.length) return null;
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-bold">🧪 With what you use now</p>
+      <ClashList list={list} empty="✅ No clashes with the products you use." />
+    </div>
+  );
+}

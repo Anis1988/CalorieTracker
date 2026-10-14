@@ -166,12 +166,25 @@ export function Pantry() {
   const [newItem, setNewItem] = useState('');
   const cam = useRef<HTMLInputElement>(null);
   const save = (l: string[]) => void st.setPantry(l).catch((e) => toast('err', errText(e)));
-  const scan = async (files: FileList | null) => {
+  const [kind, setKind] = useState<'kitchen' | 'receipt'>('kitchen');
+  const rec = useRef<HTMLInputElement>(null);
+  const scan = async (files: FileList | null, k: 'kitchen' | 'receipt') => {
     const list = [...(files ?? [])].slice(0, 3);
     if (!list.length) return;
-    setBusy(true);
-    try { const r = await api.seeIngredients(await Promise.all(list.map(forAi))); setSeen(r.items.filter((x) => !st.pantry.some((p) => p.toLowerCase() === x.toLowerCase()))); } catch (e) { toast('err', errText(e)); }
+    setBusy(true); setKind(k);
+    try { const r = await api.seeIngredients(await Promise.all(list.map(forAi)), k); setSeen(r.items.filter((x) => !st.pantry.some((p) => p.toLowerCase() === x.toLowerCase()))); } catch (e) { toast('err', errText(e)); }
     setBusy(false);
+  };
+  // Bought items on the shopping list get ticked (a loose match: "spinach" ticks "baby spinach").
+  const addSeen = (items: string[]) => {
+    save([...st.pantry, ...items]);
+    if (kind === 'receipt') {
+      const low = items.map((x) => x.toLowerCase());
+      const hit = (n: string) => low.some((x) => x.includes(n.toLowerCase()) || n.toLowerCase().includes(x));
+      const ticked = st.shopping.filter((x) => !x.done && hit(x.name));
+      if (ticked.length) { setShop(st.shopping.map((x) => (ticked.includes(x) ? { ...x, done: true } : x))); toast('ok', `Added ${items.length} to your pantry and ticked ${ticked.length} on your shopping list.`); return; }
+    }
+    toast('ok', `Added ${items.length} to your pantry.`);
   };
   const shop = st.shopping;
   const setShop = (l: typeof shop) => void st.setShopping(l).catch((e) => toast('err', errText(e)));
@@ -181,18 +194,22 @@ export function Pantry() {
   };
   return (
     <div className="mx-auto max-w-xl space-y-3.5">
-      <input ref={cam} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { void scan(e.target.files); e.target.value = ''; }} />
+      <input ref={cam} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { void scan(e.target.files, 'kitchen'); e.target.value = ''; }} />
+      <input ref={rec} type="file" accept="image/*" className="hidden" onChange={(e) => { void scan(e.target.files, 'receipt'); e.target.value = ''; }} />
       <h1 className="text-2xl font-semibold">Pantry</h1>
       <section className="card rise space-y-3">
         <div className="flex items-baseline justify-between"><h2 className="font-display text-[17px] font-semibold">🧺 What I have</h2><span className="text-xs muted">{st.pantry.length} items</span></div>
         <p className="text-xs muted">Cook uses these every time (turn it off there). Salt, oil and other staples are in Settings → Cooking.</p>
         <ChipInput label="pantry" values={st.pantry} onChange={save} placeholder="e.g. rice, eggs, canned tomatoes" />
-        <button className="btn w-full" disabled={busy} onClick={() => cam.current?.click()}>{busy ? <><span className="spinner" /> Looking…</> : <><Icon d={ICONS.camera} /> Snap my fridge or cupboard</>}</button>
+        <div className="grid grid-cols-2 gap-2">
+          <button className="btn !min-h-[52px]" disabled={busy} onClick={() => cam.current?.click()}>{busy && kind === 'kitchen' ? <><span className="spinner" /> Looking…</> : <><Icon d={ICONS.camera} /> Snap my fridge</>}</button>
+          <button className="btn !min-h-[52px]" disabled={busy} onClick={() => rec.current?.click()}>{busy && kind === 'receipt' ? <><span className="spinner" /> Reading…</> : <>🧾 Scan a receipt</>}</button>
+        </div>
         {seen && (
           <div className="rise space-y-2 rounded-2xl border p-3" style={{ borderColor: 'var(--bd)' }}>
-            <p className="text-sm font-bold">Found {seen.length} new item{seen.length === 1 ? '' : 's'}: tap one to leave it out</p>
+            <p className="text-sm font-bold">{!seen.length ? `${kind === 'receipt' ? '🧾' : '👀'} Everything on it is already in your pantry.` : `${kind === 'receipt' ? '🧾 On the receipt' : '👀 Found'}: ${seen.length} new item${seen.length === 1 ? '' : 's'}. Tap one to leave it out.`}</p>
             <div className="flex flex-wrap gap-1.5">{seen.map((x) => <button key={x} className="chip !px-3 !py-1.5" onClick={() => setSeen(seen.filter((y) => y !== x))}>{x} ×</button>)}</div>
-            <div className="flex gap-2"><button className="btn-primary flex-1" disabled={!seen.length} onClick={() => { save([...st.pantry, ...seen]); setSeen(null); }}>Add to my pantry</button><button className="btn" onClick={() => setSeen(null)}>Cancel</button></div>
+            <div className="flex gap-2"><button className="btn-primary flex-1" disabled={!seen.length} onClick={() => { addSeen(seen); setSeen(null); }}>Add to my pantry</button><button className="btn" onClick={() => setSeen(null)}>Cancel</button></div>
           </div>
         )}
         {st.pantry.length > 0 && <button className="btn-ghost -ml-2 text-xs text-red-700 dark:text-red-300" onClick={() => confirm('Empty the pantry?') && save([])}><Icon d={ICONS.trash} className="h-4 w-4" /> Empty the pantry</button>}
@@ -259,7 +276,7 @@ export function CookingGuide() {
       </Fold>
       <Fold icon="📖" title="Recipes, pantry and shopping">
         <P><b>💾 Save recipe</b> keeps it in the Recipes tab: make it a ⭐ favorite, rate it, add notes; it counts how often you cooked it.</P>
-        <P><b>Pantry</b>: what you always have (type it or snap your fridge). Cook adds it to every search. <b>Shopping list</b>: tap “Add missing to my shopping list” on a recipe, tick things off in the shop, share the list, and move what you bought to the pantry.</P>
+        <P><b>Pantry</b>: what you always have (type it or snap your fridge). Cook adds it to every search. Back from the shop? Tap <b>🧾 Scan a receipt</b>: what you bought goes into your pantry (you can leave things out first), and it’s ticked on your shopping list. <b>Shopping list</b>: tap “Add missing to my shopping list” on a recipe, tick things off in the shop, share the list, and move what you bought to the pantry.</P>
       </Fold>
       <Fold icon="⚙️" title="Your kitchen (Settings → Cooking)">
         <P>Diet (vegetarian, halal, keto…), allergies, foods you don’t like, your kitchen tools (air fryer, oven…), staples you always have, servings, time limit, how hard, how many recipes, and metric or US cups.</P>

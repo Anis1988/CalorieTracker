@@ -38,7 +38,7 @@ export const api = {
   favorite: (favorite: Favorite) => call<{ ok: true }>('/api/body', send('POST', { favorite })),
   cooking: () => call<{ recipes: Recipe[]; pantry: string[]; shopping: ShopItem[] }>('/api/cooking'),
   findRecipes: (b: { ingredients: string[]; images: string[]; meal?: string; cuisine?: string; minutes?: number; servings?: number; kcal?: number; protein?: number; wish?: string; model?: Provider }) => call<RecipeSearch>('/api/cooking', send('POST', { find: b })),
-  seeIngredients: (images: string[]) => call<{ items: string[]; by: string }>('/api/cooking', send('POST', { see: { images } })),
+  seeIngredients: (images: string[], kind: 'kitchen' | 'receipt' = 'kitchen') => call<{ items: string[]; by: string }>('/api/cooking', send('POST', { see: { images, kind } })),
   saveRecipe: (recipe: Recipe) => call<{ ok: true }>('/api/cooking', send('POST', { recipe })),
   deleteRecipe: (id: string) => call<{ ok: true }>(`/api/cooking?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   savePantry: (pantry: string[]) => call<{ ok: true }>('/api/cooking', send('POST', { pantry })),

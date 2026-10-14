@@ -109,6 +109,7 @@ export function Guide() {
 
       <Fold icon="📲" title="Put it on your phone">
         <P><b>Android app</b>: on your phone, open <b>github.com/Anis1988/CalorieTracker/releases</b>, tap <b>CalorieTracker.apk</b> under “Android app (latest)”, then open it and allow “Install unknown apps” for your browser if Android asks. The first time, type your site’s address (the one you open in the browser) and your access code. When a new version is ready, a banner offers the update; your meals stay.</P>
+        <P><b>Home-screen widget</b> (Android app): press and hold an empty spot on your home screen, tap <b>Widgets</b>, find <b>Calories</b> and drag it out. It shows the calories left today and your water, and updates each time you log something in the app. Tap it to open the app.</P>
         <P><b>iPhone</b>: open the website in Safari, tap Share, then <b>Add to Home Screen</b>. On Android you can also do this from Chrome (⋮ → <b>Add to Home screen</b>) instead of installing the app. It opens full-screen like an app, with its own icon.</P>
       </Fold>
 

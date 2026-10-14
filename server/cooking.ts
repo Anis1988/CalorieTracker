@@ -99,7 +99,10 @@ function clean(raw: unknown): Omit<RecipeSearch, 'by'> {
 
 /** 📸 Pantry scan: just the ingredients in the photos (no recipes). */
 const Seen = z.object({ items: z.array(z.string()).describe('Every food ingredient you can see, in everyday words, e.g. "eggs", "spinach", "greek yogurt"') });
-export async function seeIngredients(images: { mime: string; data: string }[], s: Settings): Promise<{ items: string[]; by: string }> {
-  return ask({ schema: Seen, system: 'You list the food ingredients you can see in kitchen photos (fridge, pantry, counter, shopping bags). Everyday names, no brands, no duplicates.', prompt: 'What ingredients can you see?', images, cacheKey: ['see', images.map((x) => x.data)] },
+const RECEIPT = `You read grocery receipts. List the food and drink items that were bought, as everyday ingredient names a cook would use (e.g. "BNLS CHKN BRST" → "chicken breast", "ORG BABY SPIN" → "spinach", "GRK YOG 0%" → "greek yogurt"). No brands, no sizes, no prices, no duplicates. Skip anything that isn't food (bags, soap, paper towels), deposits, coupons and totals.`;
+/** 📸 Pantry scan (fridge, cupboard) or 🧾 a grocery receipt: just the ingredients (no recipes). */
+export async function seeIngredients(images: { mime: string; data: string }[], s: Settings, kind: 'kitchen' | 'receipt' = 'kitchen'): Promise<{ items: string[]; by: string }> {
+  const receipt = kind === 'receipt';
+  return ask({ schema: Seen, system: receipt ? RECEIPT : 'You list the food ingredients you can see in kitchen photos (fridge, pantry, counter, shopping bags). Everyday names, no brands, no duplicates.', prompt: receipt ? 'What food did I buy?' : 'What ingredients can you see?', images, cacheKey: [kind, images.map((x) => x.data)] },
     s, (raw) => ({ items: ((Seen.safeParse(raw).success ? (raw as { items: string[] }).items : (raw as { items?: unknown })?.items) as unknown[] ?? []).map(String).map((x) => x.trim()).filter(Boolean).slice(0, 60) }), (x) => x.items.length > 0);
 }
