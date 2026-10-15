@@ -3,7 +3,7 @@ import { useStore } from '../lib/store';
 import { addDays, dayLabel, shortDay, todayStr } from '../lib/date';
 import { autoCalories, bmi, bmiLabel, kcalText, lbToKg, weightNum, weightText } from '../lib/nutrition';
 import { WeightLine } from '../components/Charts';
-import { ICONS, Icon, Seg, toast } from '../components/ui';
+import { Empty, ICONS, Icon, Seg, toast } from '../components/ui';
 import { errText } from '../lib/api';
 
 type Range = 30 | 90 | 365 | 0;
@@ -42,9 +42,9 @@ export function Weight() {
       <h1 className="text-2xl font-semibold">Weight</h1>
 
       <section className="card rise grid grid-cols-3 gap-2 text-center">
-        <div><p className="label">Now</p><p className="num mt-1 text-xl font-semibold">{latest ? weightNum(latest[1], u) : '—'}</p><p className="text-[11px] muted">{u.weight}</p></div>
-        <div><p className="label">Change</p><p className={`num mt-1 text-xl font-semibold ${change < 0 ? 'text-lime-700 dark:text-lime-300' : ''}`}>{shown.length > 1 ? `${change > 0 ? '+' : ''}${weightNum(change, u)}` : '—'}</p><p className="text-[11px] muted">{range ? `last ${range === 365 ? 'year' : `${range} days`}` : 'since the start'}</p></div>
-        <div><p className="label">Goal</p><p className="num mt-1 text-xl font-semibold">{goal ? weightNum(goal, u) : '—'}</p><p className="text-[11px] muted">{goal && latest ? `${weightText(Math.abs(latest[1] - goal), u)} to go` : 'set in Settings'}</p></div>
+        <div><p className="label">Now</p><p className="big mt-2">{latest ? weightNum(latest[1], u) : '—'}</p><p className="text-[11px] muted">{u.weight}</p></div>
+        <div><p className="label">Change</p><p className={`big mt-2 ${change < 0 ? '!text-lime-700 dark:!text-lime-300' : ''}`}>{shown.length > 1 ? `${change > 0 ? '+' : ''}${weightNum(change, u)}` : '—'}</p><p className="text-[11px] muted">{range ? `last ${range === 365 ? 'year' : `${range} days`}` : 'since the start'}</p></div>
+        <div><p className="label">Goal</p><p className="big mt-2">{goal ? weightNum(goal, u) : '—'}</p><p className="text-[11px] muted">{goal && latest ? `${weightText(Math.abs(latest[1] - goal), u)} to go` : 'set in Settings'}</p></div>
       </section>
 
       <section className="card rise rise-1 space-y-2">
@@ -60,7 +60,7 @@ export function Weight() {
       <section className="card rise rise-2 space-y-2">
         <Seg label="Range" options={[[30, '30 d'], [90, '90 d'], [365, '1 year'], [0, 'All']]} value={range} onChange={setRange} />
         {shown.length ? <WeightLine unit={u.weight} goal={goal ? weightNum(goal, u) : null} points={shown.map(([d, kg]) => ({ date: d, label: shortDay(d), value: weightNum(kg, u) }))} />
-          : <p className="py-6 text-center text-sm muted">No weights in this period yet.</p>}
+          : <Empty icon="⚖️">No weights in this period yet.</Empty>}
       </section>
 
       <section className="card rise rise-3 text-sm">

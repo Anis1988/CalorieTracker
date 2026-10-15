@@ -46,7 +46,10 @@ const ALL: Tab[] = ['today', 'history', 'weight', 'check', 'shelf', 'skin', 'coo
 const tabOf = (sp: Space): Tab => { const h = location.hash.replace('#/', '') as Tab; return ALL.includes(h) && (h === 'settings' || h === 'guide' || TABS[sp].some((t) => t.id === h)) ? h : HOME[sp]; };
 const spaceNow = (): Space => { try { const v = localStorage.getItem('ct.space'); return v === 'beauty' || v === 'cooking' ? v : 'food'; } catch { return 'food'; } };
 
-/** The slow glow behind the glass: lime / amber / rose for Calories, pink / orchid / peach for Beauty, orange / red / honey for Cooking. */
+/**
+ * The slow glow behind the glass: lime / amber / rose for Calories, pink / orchid / peach for Beauty, orange / red / honey
+ * for Cooking, plus a faint dot grid at the top that breathes. Drawn again (fading in) when you switch sides.
+ */
 function Glow({ space }: { space: Space }) {
   const c = space === 'beauty'
     ? ['bg-pink-300 dark:bg-pink-600 dark:opacity-30', 'bg-purple-300 dark:bg-purple-700 dark:opacity-30', 'bg-orange-200 dark:bg-rose-700 dark:opacity-[0.22]']
@@ -54,7 +57,8 @@ function Glow({ space }: { space: Space }) {
     ? ['bg-orange-300 dark:bg-orange-600 dark:opacity-30', 'bg-red-200 dark:bg-red-700 dark:opacity-25', 'bg-yellow-200 dark:bg-amber-600 dark:opacity-[0.22]']
     : ['bg-lime-300 dark:bg-lime-600 dark:opacity-30', 'bg-amber-200 dark:bg-amber-600 dark:opacity-25', 'bg-rose-200 dark:bg-rose-700 dark:opacity-[0.22]'];
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div key={space} className="pointer-events-none fixed inset-0 -z-10 overflow-hidden animate-[fade_.9s_ease-out]" aria-hidden="true">
+      <div className="dotgrid breathe absolute inset-0" />
       <div className={`absolute -left-32 -top-28 h-[380px] w-[420px] rounded-full opacity-45 blur-[70px] transition-colors duration-700 will-change-transform animate-[drift1_20s_ease-in-out_infinite] ${c[0]}`} />
       <div className={`absolute -right-40 top-48 h-[340px] w-[380px] rounded-full opacity-50 blur-[80px] transition-colors duration-700 will-change-transform animate-[drift2_24s_ease-in-out_infinite] ${c[1]}`} />
       <div className={`absolute -bottom-32 left-6 h-[260px] w-[320px] rounded-full opacity-40 blur-[90px] transition-colors duration-700 will-change-transform animate-[drift1_28s_ease-in-out_infinite] ${c[2]}`} />
@@ -85,6 +89,7 @@ function Main() {
   const [add, setAdd] = useState<AddMode | null>(null);
   const [check, setCheck] = useState<'pick' | 'camera' | 'gallery' | null>(null);
   const [snap, setSnap] = useState(false);
+  const [swapped, setSwapped] = useState(false); // just switched side: the page settles in like another app
   useEffect(() => {
     const f = () => setTab(tabOf(sp));
     f();
@@ -124,6 +129,7 @@ function Main() {
     if (s === sp) return;
     try { localStorage.setItem('ct.space', s); } catch { /* private mode */ }
     setSpace(s);
+    setSwapped(true);
     location.hash = `#/${HOME[s]}`;
     window.scrollTo(0, 0);
   };
@@ -137,9 +143,9 @@ function Main() {
   const orange = sp === 'cooking';
   const multi = spaces.length > 1;
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-[calc(9rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]">
       <Glow space={sp} />
-      <header className={`sticky top-0 z-30 border-b border-stone-900/5 backdrop-blur-xl transition-colors duration-500 dark:border-white/[0.06] ${pink ? 'bg-[#fbf1f5]/70 dark:bg-[#0e070c]/70' : orange ? 'bg-[#fbf5ef]/70 dark:bg-[#0f0905]/70' : 'bg-[#f3f5ef]/70 dark:bg-[#07090c]/70'}`} style={{ paddingTop: 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))' }}>
+      <header className="sticky top-0 z-30 border-b border-stone-900/5 backdrop-blur-xl backdrop-saturate-150 dark:border-white/[0.06]" style={{ paddingTop: 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))', background: 'color-mix(in srgb, var(--bg) 78%, transparent)' }}>
         <div className="mx-auto flex max-w-xl items-center gap-2 px-4 py-2.5">
           <img src={pink ? '/beauty.svg' : orange ? '/cooking.svg' : '/icon.svg'} alt="" className="h-8 w-8 shrink-0" />
           {!multi && <span className="font-display text-xl font-semibold tracking-tight">Calories</span>}
@@ -148,8 +154,8 @@ function Main() {
           <button onClick={() => go('guide')} aria-label="Guide" className={`btn h-11 w-11 shrink-0 !p-0 ${multi ? '' : 'ml-auto'} ${tab === 'guide' ? (pink ? '!border-pink-400 text-pink-700 shadow-[0_0_18px_-4px_#f9a8d4] dark:!border-pink-300 dark:text-pink-200' : orange ? '!border-orange-400 text-orange-700 shadow-[0_0_18px_-4px_#fdba74] dark:!border-orange-300 dark:text-orange-200' : '!border-lime-500 text-lime-700 shadow-[0_0_18px_-4px_#bef264] dark:!border-lime-300 dark:text-lime-200') : 'text-stone-600 dark:text-stone-300'}`}><Icon d={ICONS.help} /></button>
         </div>
       </header>
-      {st.error && <p className="mx-auto mt-3 max-w-xl px-4"><span className="card block border-red-300 !py-3 text-sm text-red-800 dark:text-red-200">{st.error} <button className="font-bold underline" onClick={() => void st.refresh()}>Try again</button></span></p>}
-      <main key={`${sp}-${tab}`} className="rise mx-auto max-w-xl px-4 py-4">
+      {st.error && <p className="mx-auto mt-3 max-w-xl px-4"><span className="card block border-red-300 !py-3 text-sm text-red-800 dark:text-red-200">{st.error} <button className="tap rounded-lg px-1 font-bold underline" onClick={() => void st.refresh()}>Try again</button></span></p>}
+      <main key={`${sp}-${tab}`} className={`page mx-auto max-w-xl px-4 pb-4 pt-5 ${swapped ? 'space-in' : ''}`} onAnimationEnd={(e) => { if (e.target === e.currentTarget) setSwapped(false); }}>
         <AppUpdateCheck />
         {tab === 'today' ? <Today date={date} setDate={setDate} add={add} setAdd={setAdd} />
           : tab === 'history' ? <History openDay={(d) => { setDate(d); go('today'); }} />
@@ -163,7 +169,9 @@ function Main() {
           : tab === 'settings' ? <Settings space={sp} />
           : pink ? <BeautyGuide /> : orange ? <CookingGuide /> : <Guide />}
       </main>
-      <nav aria-label="Tabs" className="glass fixed inset-x-3 z-30 mx-auto flex max-w-xl rounded-[28px] p-1.5" style={{ bottom: 'calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
+      {/* The page fades out under the bottom bar, so nothing is hidden behind it or the big camera button. */}
+      <div aria-hidden="true" className="scrim pointer-events-none fixed inset-x-0 bottom-0 z-20 h-[calc(7rem+var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]" />
+      <nav aria-label="Tabs" className="tabbar fixed inset-x-3 z-30 mx-auto flex max-w-xl rounded-[28px] p-1.5" style={{ bottom: 'calc(12px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))' }}>
         <span aria-hidden="true" className="tabpill" style={{ '--i': slot, opacity: tab === 'guide' ? 0 : 1 } as CSSProperties} />
         {[0, 1, 2, 3, 4].map((i) => {
           const t = tabs.find((x) => x.slot === i);

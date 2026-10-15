@@ -2,29 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* "Fresh Glass": frosted glass with a soft shine over a slow lime / amber / rose glow. Taps: the button sinks, a glow
-   spreads from it and it springs back. Animations only move, scale or fade (cheap for phones) and all stop when the
-   phone asks for less motion. */
+/* "Fresh Glass 2": frosted glass with a soft shine and a thin glowing top edge, over a slow lime / amber / rose glow and a
+   faint dot grid. Cards come in one after another, sheets slide up, the AI's wait shows shimmering placeholders. Taps: the
+   button sinks, a glow spreads from it and it springs back. Animations only move, scale or fade (cheap for phones) and all
+   stop when the phone asks for less motion. */
 :root {
   --a: #bef264; --a2: #fbbf24; --ink: #1a1405;
   --gl: rgba(255, 255, 255, .74); --gl2: rgba(255, 255, 255, .42); --bd: rgba(20, 30, 10, .08); --hi: rgba(255, 255, 255, .95);
   --sh: 0 18px 40px -24px rgba(40, 50, 30, .4); --trk: rgba(20, 30, 10, .08);
   --protein: #0ea5e9; --carbs: #f59e0b; --fat: #db2777;
   --spring: cubic-bezier(.34, 1.56, .64, 1); --soft: cubic-bezier(.2, .8, .2, 1);
+  --bg: #f3f5ef; --edge: rgba(132, 204, 22, .55); --dot: rgba(20, 30, 10, .07); --bar: rgba(250, 251, 247, .86);
 }
 .dark {
   --gl: rgba(255, 255, 255, .08); --gl2: rgba(255, 255, 255, .025); --bd: rgba(255, 255, 255, .12); --hi: rgba(255, 255, 255, .18);
   --sh: 0 22px 50px -24px rgba(0, 0, 0, .8); --trk: rgba(255, 255, 255, .09);
   --protein: #0284c7; --carbs: #d97706; --fat: #db2777;
+  --bg: #07090c; --edge: rgba(190, 242, 100, .4); --dot: rgba(255, 255, 255, .045); --bar: rgba(16, 19, 22, .84);
 }
 
 /* 💄 Beauty: the same glass, in rose / orchid. The class "beauty" on <html> (set before the first paint). */
 :root { --okbg: rgba(63, 98, 18, .92); }
-.beauty { --okbg: rgba(157, 23, 77, .92); --a: #f9a8d4; --a2: #c084fc; --ink: #2a0b22; --rip: rgba(249, 168, 212, .55); }
-.beauty.dark { --rip: rgba(255, 255, 255, .38); }
+.beauty { --okbg: rgba(157, 23, 77, .92); --a: #f9a8d4; --a2: #c084fc; --ink: #2a0b22; --rip: rgba(249, 168, 212, .55);
+  --bg: #fbf1f5; --edge: rgba(236, 72, 153, .45); --bar: rgba(253, 246, 249, .86); }
+.beauty.dark { --rip: rgba(255, 255, 255, .38); --bg: #0e070c; --edge: rgba(249, 168, 212, .42); --bar: rgba(26, 14, 22, .84); }
 /* 🍳 Cooking: warm orange / paprika. */
-.cooking { --okbg: rgba(154, 52, 18, .92); --a: #fdba74; --a2: #f97316; --ink: #2b1203; --rip: rgba(253, 186, 116, .55); }
-.cooking.dark { --rip: rgba(255, 255, 255, .38); }
+.cooking { --okbg: rgba(154, 52, 18, .92); --a: #fdba74; --a2: #f97316; --ink: #2b1203; --rip: rgba(253, 186, 116, .55);
+  --bg: #fbf5ef; --edge: rgba(249, 115, 22, .45); --bar: rgba(253, 249, 244, .86); }
+.cooking.dark { --rip: rgba(255, 255, 255, .38); --bg: #0f0905; --edge: rgba(253, 186, 116, .42); --bar: rgba(27, 18, 11, .84); }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
@@ -36,8 +41,13 @@
 }
 @layer components {
   .glass { position: relative; background: linear-gradient(155deg, var(--gl), var(--gl2)); border: 1px solid var(--bd); box-shadow: inset 0 1px 0 var(--hi), var(--sh); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%); }
-  .card { @apply glass rounded-[26px] p-4; }
-  .card::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .07) 48%, transparent 62%); }
+  /* Cards: glass + a thin glowing line along the top edge (the side's colour) + a soft diagonal shine. */
+  .card { @apply glass rounded-[26px] p-4;
+    background: linear-gradient(90deg, transparent 12%, var(--edge) 50%, transparent 88%) top / 100% 1px no-repeat, linear-gradient(155deg, var(--gl), var(--gl2)); }
+  .card::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, .09) 48%, transparent 62%); }
+  .dark .card { box-shadow: inset 0 1px 0 var(--hi), 0 0 0 .5px rgba(255, 255, 255, .03), var(--sh); }
+  /* Big numbers with small labels. */
+  .big { @apply num text-[26px] font-semibold leading-none tracking-tight text-stone-900 dark:text-white; }
   .label { @apply font-mono text-[10.5px] font-medium uppercase tracking-[0.14em] text-stone-500 dark:text-stone-400; }
   .muted { @apply text-stone-500 dark:text-stone-400; }
   .input { @apply min-h-[44px] rounded-2xl border border-stone-900/10 bg-white/80 px-3 text-[16px] text-stone-900 outline-none transition focus:border-lime-600 focus:ring-4 focus:ring-lime-500/15 dark:border-white/10 dark:bg-white/[0.06] dark:text-stone-100 dark:focus:border-lime-300 dark:focus:ring-lime-300/15; }
@@ -45,7 +55,7 @@
   .btn { @apply tap inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-2xl border px-4 text-sm font-bold text-stone-800 disabled:opacity-50 dark:text-stone-100; background: var(--gl); border-color: var(--bd); box-shadow: inset 0 1px 0 var(--hi); }
   .btn-primary { @apply tap inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-2xl border-0 px-4 text-sm font-extrabold disabled:opacity-50; color: var(--ink); background: linear-gradient(135deg, var(--a), var(--a2)); box-shadow: 0 10px 26px -12px var(--a2); }
   .btn-primary:not(:disabled):active { box-shadow: 0 0 0 6px rgba(251, 191, 36, .22), 0 0 32px var(--a); }
-  .btn-ghost { @apply tap inline-flex min-h-[40px] items-center gap-1 rounded-xl px-2 text-sm font-semibold text-stone-600 hover:bg-stone-900/5 dark:text-stone-300 dark:hover:bg-white/[0.06]; }
+  .btn-ghost { @apply tap inline-flex min-h-[44px] items-center gap-1 rounded-xl px-2 text-sm font-semibold text-stone-600 hover:bg-stone-900/5 dark:text-stone-300 dark:hover:bg-white/[0.06]; }
   .btn-danger { @apply tap inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-2xl border border-red-300 px-4 text-sm font-bold text-red-700 dark:border-red-800 dark:text-red-300; }
   .chip { @apply tap inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold; border-color: var(--bd); }
   .num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -86,13 +96,36 @@
   .bar-grow { transform-origin: left center; animation: grow .9s var(--soft) both; }
   .bar-up { transform-origin: bottom center; transform-box: fill-box; animation: up .8s var(--soft) both; }
   .pop-in { animation: popin .5s var(--spring) both; }
-  .scan { background: linear-gradient(90deg, transparent, rgba(190, 242, 100, .55), transparent); animation: scan 1.6s ease-in-out infinite; }
+  .scan { background: linear-gradient(180deg, transparent, var(--a), transparent); opacity: .55; animation: scan 1.6s ease-in-out infinite; }
+
+  /* ⏳ Placeholders while the AI reads: soft blocks with a light sweeping across. */
+  .skel { position: relative; overflow: hidden; border-radius: 12px; background: var(--trk); }
+  .skel::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent); animation: shimmer 1.4s ease-in-out infinite; }
+  .dark .skel::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .09), transparent); }
+
+  /* Pages: each card comes in a moment after the one above it. */
+  .page > * > * { animation: rise .55s var(--soft) backwards; }
+  .page > * > :nth-child(2) { animation-delay: .05s; } .page > * > :nth-child(3) { animation-delay: .1s; }
+  .page > * > :nth-child(4) { animation-delay: .15s; } .page > * > :nth-child(5) { animation-delay: .2s; }
+  .page > * > :nth-child(6) { animation-delay: .25s; } .page > * > :nth-child(n+7) { animation-delay: .3s; }
+  /* Switching Calories / Beauty / Cooking: the new side settles in from slightly larger, like opening another app. */
+  .space-in { animation: spacein .6s var(--soft) both; }
+
+  /* The bottom bar: frosted, nearly solid so the page doesn't read through the labels. */
+  .tabbar { background: linear-gradient(180deg, var(--bar), var(--bar)); border: 1px solid var(--bd); box-shadow: inset 0 1px 0 var(--hi), 0 18px 40px -16px rgba(0, 0, 0, .35); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%); }
+  .scrim { background: linear-gradient(180deg, transparent, var(--bg) 70%); }
+  .dotgrid { background-image: radial-gradient(var(--dot) 1px, transparent 1.2px); background-size: 22px 22px; -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 80%); mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 30%, transparent 80%); }
+  .breathe { animation: breathe 9s ease-in-out infinite; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes drift1 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(40px, 50px, 0) scale(1.15); } }
 @keyframes drift2 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.1); } 50% { transform: translate3d(-50px, 30px, 0) scale(.95); } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pop { from { opacity: 0; transform: translateY(40px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes sheetup { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes spacein { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+@keyframes breathe { 0%, 100% { opacity: .35; } 50% { opacity: .7; } }
 @keyframes popin { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @keyframes draw { from { stroke-dasharray: 0 999; } }
 @keyframes grow { from { transform: scaleX(0); } }

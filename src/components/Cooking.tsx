@@ -96,7 +96,7 @@ export function RecipeCard({ r, onOpen }: { r: Recipe; onOpen?: () => void }) {
           <p className="font-display text-[17px] font-semibold leading-snug">{r.fav ? '⭐ ' : ''}{r.title}</p>
           <p className="mt-0.5 text-sm muted">{r.summary}</p>
         </div>
-        <div className="shrink-0 text-right"><p className="num text-lg font-semibold leading-none">{Math.round(r.perServing.calories)}</p><p className="text-[10px] muted">kcal / serving</p></div>
+        <div className="shrink-0 text-right"><p className="num text-xl font-semibold leading-none">{Math.round(r.perServing.calories)}</p><p className="mt-0.5 text-[10px] leading-tight muted">kcal /<br />serving</p></div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <span className="muted">⏱ {r.minutes} min · {r.difficulty} · {r.servings} serving{r.servings === 1 ? '' : 's'}</span>
@@ -369,7 +369,7 @@ export function ChipInput({ values, onChange, placeholder, label }: { values: st
     <div className="space-y-2">
       {values.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {values.map((v) => <span key={v} className="chip !cursor-default !py-1.5 !pl-3 text-sm">{v}<button className="ml-0.5 flex h-6 w-6 items-center justify-center rounded-full text-stone-500 hover:text-red-600" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}>×</button></span>)}
+          {values.map((v) => <span key={v} className="chip !cursor-default !py-1.5 !pl-3 text-sm">{v}<button className="tap -my-1 ml-0.5 flex h-8 w-8 items-center justify-center rounded-full text-stone-500 hover:text-red-600" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))}>×</button></span>)}
         </div>
       )}
       <div className="flex gap-2">

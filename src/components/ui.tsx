@@ -89,7 +89,7 @@ export function Fold({ title, subtitle, icon, open: start = false, children }: {
   return (
     <section className="card !p-0">
       <button className="tap flex w-full items-center gap-3 rounded-[26px] px-4 py-3.5 text-left" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {icon && <span className="text-xl" aria-hidden="true">{icon}</span>}
+        {icon && <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xl" style={{ background: 'var(--trk)', boxShadow: 'inset 0 1px 0 var(--hi)' }} aria-hidden="true">{icon}</span>}
         <span className="min-w-0 flex-1">
           <span className="block font-display text-[17px] font-semibold text-stone-900 dark:text-stone-50">{title}</span>
           {subtitle && <span className="block truncate text-xs muted">{subtitle}</span>}
@@ -112,12 +112,12 @@ export function Sheet({ title, onClose, children, wide }: { title: string; onClo
   // Drawn at the top of the page (a portal), so a panel opened from another panel still covers the whole screen.
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-stone-950/40 backdrop-blur-md animate-[fade_.25s_ease-out] sm:items-center" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className={`max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-[30px] border border-white/70 bg-[#f6f8f2]/95 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl animate-[pop_.45s_cubic-bezier(.34,1.3,.64,1)] dark:border-white/10 dark:bg-[#0d1110]/95 dark:shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] sm:rounded-[30px] sm:pb-6 ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}>
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} style={{ background: 'linear-gradient(90deg, transparent 15%, var(--edge) 50%, transparent 85%) top / 100% 1px no-repeat, color-mix(in srgb, var(--bg) 94%, transparent)' }}
+        className={`max-h-[92vh] w-full overflow-y-auto overscroll-contain rounded-t-[30px] border border-white/70 p-4 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-2xl animate-[sheetup_.5s_cubic-bezier(.2,.9,.25,1.04)] dark:border-white/10 sm:animate-[pop_.45s_cubic-bezier(.34,1.3,.64,1)] dark:shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.12)] sm:rounded-[30px] sm:pb-6 ${wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'}`}>
         <div className="mx-auto -mt-1 mb-3 h-1.5 w-10 rounded-full bg-stone-900/15 dark:bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">{title}</h2>
-          <button className="btn h-10 w-10 !min-h-0 !rounded-full !p-0" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
+          <button className="btn h-11 w-11 !rounded-full !p-0" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
         </div>
         {children}
       </div>
@@ -174,7 +174,7 @@ export function PhotoViewer({ thumb, full, alt, credit, onClose }: { thumb: stri
     <div role="dialog" aria-modal="true" aria-label={alt} className="fixed inset-0 z-[60] flex flex-col bg-black/95 animate-[fade_.2s_ease-out]">
       <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <p className="min-w-0 truncate text-sm font-semibold text-white/90">{alt}</p>
-        <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-5 w-5" stroke={2.4} /></button>
+        <button className="tap flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-white" aria-label="Close" onClick={onClose}><Icon d={ICONS.close} className="h-5 w-5" stroke={2.4} /></button>
       </div>
       <div className={`relative flex-1 ${zoom ? 'overflow-auto' : 'flex items-center justify-center overflow-hidden'}`} onClick={() => setZoom((z) => !z)}>
         <img src={thumb} alt="" aria-hidden="true" className={`absolute inset-0 m-auto max-h-full max-w-full object-contain blur-sm transition-opacity duration-500 ${loaded || zoom ? 'opacity-0' : 'opacity-100'}`} />
@@ -185,5 +185,32 @@ export function PhotoViewer({ thumb, full, alt, credit, onClose }: { thumb: stri
       <p className="px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 text-center text-[11px] text-white/60">{zoom ? 'Tap to zoom out' : 'Tap the photo to zoom in'}{credit ? ` · ${credit}` : ''}</p>
     </div>,
     document.body,
+  );
+}
+
+/** 🌱 A friendly empty state: a glowing icon, a line of words, and maybe a button. */
+export function Empty({ icon, children, action }: { icon: string; children: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+      <span className="pop-in flex h-14 w-14 items-center justify-center rounded-[20px] text-2xl" aria-hidden="true"
+        style={{ background: 'linear-gradient(135deg, color-mix(in srgb, var(--a) 35%, transparent), color-mix(in srgb, var(--a2) 25%, transparent))', boxShadow: 'inset 0 1px 0 var(--hi), 0 10px 28px -12px var(--a2)' }}>{icon}</span>
+      <p className="max-w-xs text-sm muted">{children}</p>
+      {action}
+    </div>
+  );
+}
+
+/** ⏳ Shimmering placeholders while the AI reads: rows shaped like the answer that is coming. */
+export function Skeleton({ rows = 3, label }: { rows?: number; label: string }) {
+  return (
+    <div className="space-y-2.5 text-left" role="status" aria-label={label}>
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-2xl border p-3" style={{ borderColor: 'var(--bd)', background: 'var(--gl2)', animation: `rise .5s var(--soft) ${i * 0.08}s backwards` }}>
+          <span className="skel h-11 w-11 shrink-0 !rounded-xl" />
+          <span className="min-w-0 flex-1 space-y-2"><span className="skel block h-3" style={{ width: `${70 - i * 12}%` }} /><span className="skel block h-2.5 w-1/3" /></span>
+          <span className="skel h-5 w-10 shrink-0" />
+        </div>
+      ))}
+    </div>
   );
 }
