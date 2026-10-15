@@ -6,7 +6,7 @@ import { useStore } from '../lib/store';
 import { mealAt, kcalText, sum } from '../lib/nutrition';
 import { MEALS, type Analysis, type Entry, type Food, type Meal, type Provider, type Source } from '../lib/types';
 import { EntryRow, FoodEditor, HealthBadge, MacroLine } from './Food';
-import { ICONS, Icon, Seg, Sheet, Toggle, toast } from './ui';
+import { ICONS, Icon, Seg, Sheet, Skeleton, Toggle, toast } from './ui';
 
 export type AddMode = 'pick' | 'photo' | 'gallery' | 'text' | 'barcode' | 'favorites';
 
@@ -117,6 +117,7 @@ export function AddSheet({ date, mode: start = 'pick', onClose }: { date: string
             </div>
           ) : <div className="text-5xl" aria-hidden="true">🥗</div>}
           <p className="text-sm muted"><span className="spinner" /> Finding each food and its portion…</p>
+          <Skeleton rows={3} label="Reading your food" />
         </div>
       )}
 

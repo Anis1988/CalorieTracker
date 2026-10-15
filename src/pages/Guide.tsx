@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Fold } from '../components/ui';
+import { Empty, Fold, Skeleton } from '../components/ui';
 import { CalorieRing, EntryRow, FoodEditor, HealthBadge, MacroBars, MacroLine, WaterCard } from '../components/Food';
 import { CalorieBars, WeightLine } from '../components/Charts';
 import { useStore } from '../lib/store';
@@ -100,6 +100,15 @@ export function Guide() {
       <Fold icon="🤖" title="The AI and what it costs">
         <P>The AI you pick in Settings → AI is used everywhere (Calories, Beauty and Cooking). <b>Gemini</b> (Google) is free within Google’s daily allowance. <b>Claude</b> is the paid backup: about 1–2 cents a photo with Sonnet. If Gemini is over its daily limit, isn’t set up or fails, Claude takes over (turn this off in Settings → AI). You can switch which one goes first.</P>
         <P>Each AI has a daily limit you set (Settings → AI), so the cost can’t run away. The same photo or words are remembered for 7 days and never paid for twice. Barcodes, favorites and recent meals never use the AI.</P>
+      </Fold>
+
+      <Fold icon="🫧" title="How it looks and moves">
+        <P>Each side has its own colours: lime and amber for 🥗 Calories, pink and orchid for 💄 Beauty, orange for 🍳 Cooking. Switching sides fades the new one in, like opening another app. Light or dark: Settings → Look.</P>
+        <P>Cards are frosted glass with a thin glowing line along the top, and they slide in one after another. Panels slide up from the bottom. While the AI is reading, soft shimmering blocks show where the answer will appear. When a list is still empty, a short note says what will show there.</P>
+        <P>Every button and row sinks a little and glows when you tap it. The page fades out under the bottom bar, so nothing is hidden behind it. If your phone is set to reduce motion, all of this stays still.</P>
+        <Example caption="Made-up: what you see while the AI reads a photo, and an empty list.">
+          <div className="space-y-3"><Skeleton rows={2} label="Example: reading" /><Empty icon="📖">Recipes you save from Cook show here.</Empty></div>
+        </Example>
       </Fold>
 
       <Fold icon="🔒" title="Privacy">

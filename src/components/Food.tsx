@@ -34,7 +34,7 @@ export function CalorieRing({ eaten, goal, units, size = 196 }: { eaten: number;
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         <span className="label">{over ? 'Over by' : 'Left'}</span>
-        <span className={`num text-[38px] font-semibold leading-none ${over ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white'}`}>{energyNum(Math.abs(left), units).toLocaleString()}</span>
+        <span className={`num mt-0.5 text-[42px] font-semibold leading-none tracking-tight ${over ? 'text-red-600 dark:text-red-400' : 'text-stone-900 dark:text-white'}`}>{energyNum(Math.abs(left), units).toLocaleString()}</span>
         <span className="mt-1 text-xs muted"><span className="num">{energyNum(eaten, units).toLocaleString()}</span> / <span className="num">{energyNum(goal, units).toLocaleString()}</span> {energyUnit(units)}</span>
       </div>
     </div>
@@ -87,7 +87,7 @@ export function FoodEditor({ items, onChange, units, readOnly }: { items: Food[]
     <ul className="space-y-2">
       {items.map((f, i) => (
         <li key={i} className="rounded-2xl border p-3" style={{ borderColor: 'var(--bd)', background: 'var(--gl2)' }}>
-          <button className="flex w-full items-start gap-3 text-left" onClick={() => !readOnly && setOpen(open === i ? null : i)} aria-expanded={open === i} disabled={readOnly}>
+          <button className="tap -m-1 flex w-[calc(100%+0.5rem)] items-start gap-3 rounded-xl p-1 text-left" onClick={() => !readOnly && setOpen(open === i ? null : i)} aria-expanded={open === i} disabled={readOnly}>
             <span className="min-w-0 flex-1">
               <span className="block font-bold leading-snug">{f.name}</span>
               <span className="block text-xs muted">{f.portion}{f.grams ? ` · ${f.grams} g` : ''}{f.confidence && f.confidence < 60 ? ' · a rough guess' : ''}</span>
@@ -130,7 +130,7 @@ export function EntryRow({ e, units, onOpen, src }: { e: Entry; units: Settings[
         <span className="block text-xs muted">{timeText(e.time)} · {e.items.length} item{e.items.length === 1 ? '' : 's'}</span>
         <MacroLine t={t} />
       </span>
-      <span className="num shrink-0 text-right font-semibold">{kcalText(t.calories, units).replace(/ (kcal|kJ)/, '')}<span className="block text-[10px] font-normal muted">{energyUnit(units)}</span></span>
+      <span className="num shrink-0 text-right text-[17px] font-semibold">{kcalText(t.calories, units).replace(/ (kcal|kJ)/, '')}<span className="block text-[10px] font-normal muted">{energyUnit(units)}</span></span>
     </button>
   );
 }

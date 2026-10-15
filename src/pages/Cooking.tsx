@@ -6,7 +6,7 @@ import { todayStr } from '../lib/date';
 import { macroGoals, sum } from '../lib/nutrition';
 import { CUISINES, MEAL_KINDS, type Provider, type Recipe, type RecipeSearch } from '../lib/types';
 import { ChipInput, RecipeCard, RecipeSheet, drawPhoto, findPhoto, needsPhoto } from '../components/Cooking';
-import { Fold, ICONS, Icon, Toggle, toast } from '../components/ui';
+import { Empty, Fold, ICONS, Icon, Skeleton, Toggle, toast } from '../components/ui';
 
 /** 🍳 Cook: what you have (typed, your pantry, photos) → recipes, the ones you can make now first. */
 export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolean) => void }) {
@@ -81,14 +81,14 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
         <h1 className="text-2xl font-semibold">What do you have?</h1>
         <ChipInput label="ingredients" values={items} onChange={setItems} placeholder="e.g. chicken, rice, spinach, lemon" />
         <div className="grid grid-cols-2 gap-2">
-          <button className="btn !min-h-[52px]" onClick={() => cam.current?.click()} disabled={pics.length >= 3}><Icon d={ICONS.camera} /> Snap ingredients</button>
-          <button className="btn !min-h-[52px]" onClick={() => gal.current?.click()} disabled={pics.length >= 3}><Icon d={ICONS.image} /> From gallery</button>
+          <button className="btn !min-h-[72px] flex-col !gap-1 !rounded-[22px]" onClick={() => cam.current?.click()} disabled={pics.length >= 3}><Icon d={ICONS.camera} className="h-6 w-6" /> Snap ingredients</button>
+          <button className="btn !min-h-[72px] flex-col !gap-1 !rounded-[22px]" onClick={() => gal.current?.click()} disabled={pics.length >= 3}><Icon d={ICONS.image} className="h-6 w-6" /> From gallery</button>
         </div>
         {pics.length > 0 && (
           <div className="grid grid-cols-3 gap-2">
             {pics.map((p, i) => (
               <div key={i} className="relative"><img src={p.small} alt={`Photo ${i + 1}`} className="aspect-square w-full rounded-2xl object-cover" />
-                <button className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => setPics((l) => l.filter((_, j) => j !== i))}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
+                <button className="tap absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => setPics((l) => l.filter((_, j) => j !== i))}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
               </div>
             ))}
           </div>
@@ -108,9 +108,9 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
           <div className="flex items-center justify-between gap-3 pt-2">
             <span className="text-sm font-semibold">Servings</span>
             <span className="flex items-center gap-1.5">
-              <button className="btn h-9 w-9 !min-h-0 !p-0" aria-label="Fewer servings" disabled={servings <= 1} onClick={() => setServings((n) => n - 1)}><Icon d={ICONS.minus} className="h-4 w-4" /></button>
+              <button className="btn h-11 w-11 !p-0" aria-label="Fewer servings" disabled={servings <= 1} onClick={() => setServings((n) => n - 1)}><Icon d={ICONS.minus} className="h-4 w-4" /></button>
               <span className="num w-6 text-center font-bold">{servings}</span>
-              <button className="btn h-9 w-9 !min-h-0 !p-0" aria-label="More servings" disabled={servings >= 12} onClick={() => setServings((n) => n + 1)}><Icon d={ICONS.plus} className="h-4 w-4" /></button>
+              <button className="btn h-11 w-11 !p-0" aria-label="More servings" disabled={servings >= 12} onClick={() => setServings((n) => n + 1)}><Icon d={ICONS.plus} className="h-4 w-4" /></button>
             </span>
           </div>
           <label className="block pt-2 text-xs font-semibold muted">Anything special?<input className="input mt-1 w-full" value={wish} onChange={(e) => setWish(e.target.value)} placeholder="e.g. something spicy, kid-friendly, one pan" maxLength={200} /></label>
@@ -124,6 +124,7 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
         <button className="btn-primary w-full !min-h-[56px] text-base" disabled={busy || (!all.length && !pics.length)} onClick={() => void find()}>{busy ? <><span className="spinner" /> Cooking up ideas…</> : '🍳 Find recipes'}</button>
         {busy && <p className="text-center text-xs muted">This takes about 20–60 seconds: the AI writes each recipe in full.</p>}
       </section>
+      {busy && <section className="card"><Skeleton rows={4} label="Writing recipes" /></section>}
 
       <div ref={out} className="scroll-mt-20" />
       {res && !busy && (
@@ -139,7 +140,7 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
           {now.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => setOpen({ ...r, by: res.by })} />)}
           {more.length > 0 && <h2 className="rise pt-1 font-display text-lg font-semibold">🛒 Need 1–2 more things</h2>}
           {more.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => setOpen({ ...r, by: res.by })} />)}
-          {!res.recipes.length && <p className="card text-sm muted">No recipes came back. Add a few more ingredients and try again.</p>}
+          {!res.recipes.length && <p className="card text-center text-sm muted">No recipes came back. Add a few more ingredients and try again.</p>}
           <p className="text-center text-[11px] muted">{res.by}{res.cached ? ' · remembered (free)' : ''}{res.note ? ` · ${res.note}` : ''}</p>
         </>
       )}
@@ -149,7 +150,7 @@ export function CookHome({ snap, setSnap }: { snap: boolean; setSnap: (v: boolea
 }
 
 const Pill = ({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) => (
-  <button className={`chip !px-3 !py-1.5 text-[13px] ${on ? '!border-transparent bg-gradient-to-br from-orange-300 to-orange-500 text-[#2b1203]' : ''}`} aria-pressed={on} onClick={onClick}>{children}</button>
+  <button className={`chip min-h-[40px] !px-3.5 text-[13px] ${on ? '!border-transparent bg-gradient-to-br from-orange-300 to-orange-500 text-[#2b1203]' : ''}`} aria-pressed={on} onClick={onClick}>{children}</button>
 );
 
 /** 📖 Recipes: the ones you saved, with favorites, ratings and how often you cooked them. */
@@ -170,7 +171,7 @@ export function Recipes() {
       </div>
       {st.recipes.length > 4 && <label className="block"><span className="sr-only">Search my recipes</span><input className="input w-full" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a dish or an ingredient" /></label>}
       {list.map((r) => <RecipeCard key={r.id} r={r} onOpen={() => setOpen(r)} />)}
-      {!list.length && <p className="card text-sm muted">{st.recipes.length ? 'Nothing here.' : 'Recipes you save from Cook show here: tap “💾 Save recipe” on one you like.'}</p>}
+      {!list.length && <div className="card"><Empty icon="📖">{st.recipes.length ? 'Nothing here.' : 'Recipes you save from Cook show here: tap “💾 Save recipe” on one you like.'}</Empty></div>}
       {open && <RecipeSheet r={open} saved onClose={() => setOpen(null)} />}
     </div>
   );
@@ -229,10 +230,10 @@ export function Pantry() {
         <p className="text-xs muted">Cook uses these every time (turn it off there). Salt, oil and other staples are in Settings → Cooking.</p>
         <ChipInput label="pantry" values={st.pantry} onChange={save} placeholder="e.g. rice, eggs, canned tomatoes" />
         <div className="grid grid-cols-2 gap-2">
-          <button className="btn !min-h-[52px]" disabled={busy} onClick={() => cam.current?.click()}>{busy && kind === 'kitchen' ? <><span className="spinner" /> Looking…</> : <><Icon d={ICONS.camera} /> Snap my fridge</>}</button>
-          <button className="btn !min-h-[52px]" disabled={busy} onClick={() => rec.current?.click()}>{busy && kind === 'receipt' ? <><span className="spinner" /> Reading…</> : <>🧾 Scan a receipt</>}</button>
+          <button className="btn !min-h-[72px] flex-col !gap-1 !rounded-[22px]" disabled={busy} onClick={() => cam.current?.click()}>{busy && kind === 'kitchen' ? <><span className="spinner" /> Looking…</> : <><Icon d={ICONS.camera} className="h-6 w-6" /> Snap my fridge</>}</button>
+          <button className="btn !min-h-[72px] flex-col !gap-1 !rounded-[22px]" disabled={busy} onClick={() => rec.current?.click()}>{busy && kind === 'receipt' ? <><span className="spinner" /> Reading…</> : <><span className="text-xl leading-6" aria-hidden="true">🧾</span> Scan a receipt</>}</button>
         </div>
-        <button className="btn-ghost -mt-1 text-xs" disabled={busy} onClick={() => recGal.current?.click()}><Icon d={ICONS.image} className="h-4 w-4" /> Receipt photo from the gallery (a long receipt can be up to 3 photos)</button>
+        <button className="btn-ghost -mt-1 text-left text-xs" disabled={busy} onClick={() => recGal.current?.click()}><Icon d={ICONS.image} className="h-4 w-4 shrink-0" /> Receipt photo from the gallery (a long receipt can be up to 3 photos)</button>
         {done && (
           <div className="rise space-y-2 rounded-2xl border border-emerald-400/50 bg-emerald-500/10 p-3 text-sm">
             <p className="font-bold">{done.added.length ? `🧾 Added ${done.added.length} to your pantry` : '🧾 Everything on it is already in your pantry'}</p>
@@ -261,13 +262,13 @@ export function Pantry() {
         <ul>
           {shop.map((x) => (
             <li key={x.id} className="flex items-center gap-2 border-t py-1.5 first:border-0" style={{ borderColor: 'var(--trk)' }}>
-              <button role="checkbox" aria-checked={x.done} aria-label={x.name} className={`tap flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${x.done ? 'border-transparent bg-orange-500 text-white' : ''}`} style={x.done ? undefined : { borderColor: 'var(--bd)' }} onClick={() => setShop(shop.map((y) => (y.id === x.id ? { ...y, done: !y.done } : y)))}>{x.done && <Icon d={ICONS.check} className="pop-in h-4 w-4" stroke={3} />}</button>
+              <button role="checkbox" aria-checked={x.done} aria-label={x.name} className={`tap flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 ${x.done ? 'border-transparent bg-orange-500 text-white' : ''}`} style={x.done ? undefined : { borderColor: 'var(--bd)' }} onClick={() => setShop(shop.map((y) => (y.id === x.id ? { ...y, done: !y.done } : y)))}>{x.done && <Icon d={ICONS.check} className="pop-in h-4 w-4" stroke={3} />}</button>
               <span className={`min-w-0 flex-1 text-sm ${x.done ? 'line-through muted' : 'font-semibold'}`}>{x.name}{x.from && <span className="block text-[11px] font-normal muted">for {x.from}</span>}</span>
               <button className="btn-ghost" aria-label={`Remove ${x.name}`} onClick={() => setShop(shop.filter((y) => y.id !== x.id))}><Icon d={ICONS.close} className="h-4 w-4" /></button>
             </li>
           ))}
         </ul>
-        {!shop.length && <p className="text-sm muted">Empty. Recipes can add what’s missing with one tap.</p>}
+        {!shop.length && <Empty icon="🛒">Empty. Recipes can add what’s missing with one tap.</Empty>}
         {shop.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             <button className="btn" onClick={() => void share()}>📤 Share the list</button>

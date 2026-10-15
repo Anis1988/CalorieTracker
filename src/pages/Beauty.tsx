@@ -5,7 +5,7 @@ import { avoidHits } from '../lib/avoid';
 import { clashes } from '../lib/clash';
 import { SHELF_STATUS, type BeautyCheck, type ShelfItem, type ShelfStatus } from '../lib/types';
 import { BeautyResult, CheckSheet, ClashList, ShelfRow, ShelfSheet, SkinProfile, profileLine, recentChecks, routine, soonExpiring } from '../components/Beauty';
-import { Fold, ICONS, Icon } from '../components/ui';
+import { Empty, Fold, ICONS, Icon } from '../components/ui';
 
 /** 💄 Check (Beauty's home): your skin in one line, the big button, recent checks, what's expiring. */
 export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' | 'gallery' | null; setCheck: (c: 'pick' | 'camera' | 'gallery' | null) => void; go: (t: string) => void }) {
@@ -19,10 +19,10 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
     <div className="mx-auto max-w-xl space-y-3.5">
       <section className="card rise overflow-hidden">
         <p className="label">Your skin</p>
-        <button className="mt-1 block text-left font-display text-lg font-semibold leading-snug" onClick={() => go('skin')}>{profileLine(b)} <span className="text-sm font-normal text-pink-700 underline dark:text-pink-300">edit</span></button>
+        <button className="tap -mx-1 mt-1 block rounded-xl px-1 text-left font-display text-[17px] font-semibold leading-snug" onClick={() => go('skin')}>{profileLine(b)} <span className="text-sm font-normal text-pink-700 underline dark:text-pink-300">edit</span></button>
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className="btn-primary !min-h-[60px] !rounded-[20px] text-[15px]" onClick={() => setCheck('camera')}><Icon d={ICONS.camera} className="h-6 w-6" /> Check a product</button>
-          <button className="btn !min-h-[60px] !rounded-[20px]" onClick={() => setCheck('gallery')}><Icon d={ICONS.image} className="h-5 w-5" /> From gallery</button>
+          <button className="btn-primary !min-h-[76px] flex-col !gap-1 !rounded-[22px] text-[14px]" onClick={() => setCheck('camera')}><Icon d={ICONS.camera} className="h-6 w-6" /> Check a product</button>
+          <button className="btn !min-h-[76px] flex-col !gap-1 !rounded-[22px]" onClick={() => setCheck('gallery')}><Icon d={ICONS.image} className="h-6 w-6" /> From gallery</button>
         </div>
         <p className="mt-2 text-xs muted">Snap the front and the ingredient list: you’ll see if it suits your skin, what helps, and what to watch.</p>
       </section>
@@ -43,8 +43,8 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
       )}
 
       <section className="card rise rise-3 !pb-2">
-        <div className="flex items-baseline justify-between"><h2 className="font-display text-[17px] font-semibold">Recent checks</h2>{st.shelf.length > 6 && <button className="text-xs font-bold text-pink-700 dark:text-pink-300" onClick={() => go('shelf')}>See all</button>}</div>
-        {recent.length ? recent.map((x) => <ShelfRow key={x.id} x={x} onOpen={() => setOpen(x)} />) : <p className="py-3 text-sm muted">Nothing checked yet. Tap “Check a product” and snap your moisturizer, foundation or anything else.</p>}
+        <div className="flex items-baseline justify-between"><h2 className="font-display text-[17px] font-semibold">Recent checks</h2>{st.shelf.length > 6 && <button className="tap -my-2 min-h-[44px] rounded-xl px-2 text-xs font-bold text-pink-700 dark:text-pink-300" onClick={() => go('shelf')}>See all</button>}</div>
+        {recent.length ? recent.map((x) => <ShelfRow key={x.id} x={x} onOpen={() => setOpen(x)} />) : <Empty icon="🧴">Nothing checked yet. Tap “Check a product” and snap your moisturizer, foundation or anything else.</Empty>}
       </section>
 
       {check && <CheckSheet start={check === 'pick' ? undefined : check} onClose={() => setCheck(null)} />}
@@ -54,7 +54,7 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
 }
 
 const Tile = ({ n, label }: { n: number; label: string }) => (
-  <div className="card !rounded-[22px] !px-2 !py-3"><p className="num text-xl font-semibold">{n}</p><p className="text-[11px] leading-tight muted">{label}</p></div>
+  <div className="card !rounded-[22px] !px-2 !py-3"><p className="big">{n}</p><p className="mt-1 text-[11px] leading-tight muted">{label}</p></div>
 );
 
 /** 🧴 My shelf: everything checked, by status. */
@@ -71,12 +71,12 @@ export function Shelf() {
       <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {([['all', 'All', '🧴'], ...SHELF_STATUS.map((s) => [s.id, s.label, s.icon])] as [string, string, string][]).map(([id, l, ic]) => {
           const n = id === 'all' ? st.shelf.length : st.shelf.filter((x) => x.status === id).length;
-          return <button key={id} className={`chip shrink-0 !px-3 !py-2 ${f === id ? '!border-transparent bg-gradient-to-br from-pink-300 to-purple-400 text-[#2a0b22]' : ''}`} aria-pressed={f === id} onClick={() => pick(id as 'all' | ShelfStatus)}>{ic} {l} <span className="num opacity-70">{n}</span></button>;
+          return <button key={id} className={`chip min-h-[40px] shrink-0 !px-3 ${f === id ? '!border-transparent bg-gradient-to-br from-pink-300 to-purple-400 text-[#2a0b22]' : ''}`} aria-pressed={f === id} onClick={() => pick(id as 'all' | ShelfStatus)}>{ic} {l} <span className="num opacity-70">{n}</span></button>;
         })}
       </div>
       {st.shelf.length > 5 && <label className="block"><span className="sr-only">Search my shelf</span><input className="input w-full" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search brand or product" /></label>}
       <section className="card rise !pb-2">
-        {list.length ? list.map((x) => <ShelfRow key={x.id} x={x} onOpen={() => setOpen(x)} />) : <p className="py-3 text-sm muted">{st.shelf.length ? 'Nothing here.' : 'Products you check are kept here.'}</p>}
+        {list.length ? list.map((x) => <ShelfRow key={x.id} x={x} onOpen={() => setOpen(x)} />) : <Empty icon="🧴">{st.shelf.length ? 'Nothing here.' : 'Products you check are kept here.'}</Empty>}
       </section>
       {open && <ShelfSheet x={open} onClose={() => setOpen(null)} />}
     </div>

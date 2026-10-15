@@ -25,8 +25,8 @@ export function Today({ date, setDate, add, setAdd }: { date: string; setDate: (
       <div className="flex items-center justify-between gap-2">
         <button className="btn h-11 w-11 !p-0" aria-label="Day before" onClick={() => setDate(addDays(date, -1))}><Icon d={ICONS.left} /></button>
         <div className="text-center">
-          <h1 className="text-2xl font-semibold">{dayLabel(date)}</h1>
-          {!isToday && <button className="text-xs font-bold text-lime-700 underline dark:text-lime-300" onClick={() => setDate(todayStr())}>Back to today</button>}
+          <p className="label">{isToday ? 'Your day' : 'Looking back'}</p><h1 className="text-2xl font-semibold">{dayLabel(date)}</h1>
+          {!isToday && <button className="tap -mb-2 min-h-[32px] rounded-lg px-2 text-xs font-bold text-lime-700 underline dark:text-lime-300" onClick={() => setDate(todayStr())}>Back to today</button>}
         </div>
         <button className="btn h-11 w-11 !p-0" aria-label="Next day" disabled={isToday} onClick={() => setDate(addDays(date, 1))}><Icon d={ICONS.right} /></button>
       </div>

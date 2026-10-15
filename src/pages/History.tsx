@@ -5,7 +5,7 @@ import { energyNum, energyUnit, macroGoals, sum } from '../lib/nutrition';
 import type { DayData } from '../lib/types';
 import { CalorieBars } from '../components/Charts';
 import { MACROS, MacroLine } from '../components/Food';
-import { Seg, toast } from '../components/ui';
+import { Empty, Seg, toast } from '../components/ui';
 import { errText } from '../lib/api';
 
 type Range = 7 | 30 | 90;
@@ -101,7 +101,7 @@ export function History({ openDay }: { openDay: (d: string) => void }) {
             </button>
           );
         })}
-        {!logged.length && <p className="py-2 text-sm muted">Nothing logged in this period yet.</p>}
+        {!logged.length && <Empty icon="📊">Nothing logged in this period yet.</Empty>}
       </section>
     </div>
   );
@@ -111,8 +111,8 @@ function Stat({ label, value, sub }: { label: string; value: string; sub: string
   return (
     <div className="card !rounded-[22px] !px-3 !py-3 text-center">
       <p className="label">{label}</p>
-      <p className="num mt-1 text-xl font-semibold">{value}</p>
-      <p className="text-[11px] leading-tight muted">{sub}</p>
+      <p className="big mt-2 truncate">{value}</p>
+      <p className="mt-1 text-[11px] leading-tight muted">{sub}</p>
     </div>
   );
 }

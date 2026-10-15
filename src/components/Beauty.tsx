@@ -4,7 +4,7 @@ import { forAi, thumb } from '../lib/image';
 import { addDays, daysBetween, shortDay, todayStr } from '../lib/date';
 import { useStore } from '../lib/store';
 import { AVOID_IDEAS, CONCERNS, SHELF_STATUS, SKIN_TYPES, TONES, UNDERTONES, type Beauty, type BeautyCheck, type Provider, type ShelfItem, type ShelfStatus, type Verdict } from '../lib/types';
-import { ICONS, Icon, Sheet, Thumb, Toggle, toast } from './ui';
+import { ICONS, Icon, Sheet, Skeleton, Thumb, Toggle, toast } from './ui';
 import { clashes, type Clash } from '../lib/clash';
 
 /** 💄 Beauty pieces. Each is also drawn in the Beauty guide with made-up products. */
@@ -191,7 +191,7 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
             {pics.map((p, i) => (
               <div key={i} className="relative">
                 <img src={p.small} alt={`Photo ${i + 1}`} className="aspect-square w-full rounded-2xl object-cover" />
-                <button className="absolute right-1 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => setPics((l) => l.filter((_, j) => j !== i))}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
+                <button className="tap absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white" aria-label={`Remove photo ${i + 1}`} onClick={() => setPics((l) => l.filter((_, j) => j !== i))}><Icon d={ICONS.close} className="h-4 w-4" stroke={2.4} /></button>
               </div>
             ))}
             {pics.length < 3 && (
@@ -218,6 +218,7 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
             <div className="scan pointer-events-none absolute inset-x-0 top-0 h-full" aria-hidden="true" />
           </div>
           <p className="text-sm muted"><span className="spinner" /> Reading the ingredients and matching them to your skin…</p>
+          <Skeleton rows={3} label="Reading the label" />
         </div>
       )}
       {stage === 'result' && r && (
