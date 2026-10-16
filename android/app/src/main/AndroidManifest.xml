@@ -47,4 +47,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 📸 Snap a meal: the camera opens from the app's photo button. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- ⬆️ Update button: open the installer for the downloaded new version (Android asks you once) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>
