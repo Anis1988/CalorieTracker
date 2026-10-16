@@ -4,8 +4,10 @@ import { forAi, thumb } from '../lib/image';
 import { addDays, daysBetween, shortDay, todayStr } from '../lib/date';
 import { useStore } from '../lib/store';
 import { AVOID_IDEAS, CONCERNS, SHELF_STATUS, SKIN_TYPES, TONES, UNDERTONES, type Beauty, type BeautyCheck, type Provider, type ShelfItem, type ShelfStatus, type Verdict } from '../lib/types';
-import { ICONS, Icon, Sheet, Skeleton, Thumb, Toggle, toast } from './ui';
+import { Empty, ICONS, Icon, Sheet, Skeleton, Thumb, Toggle, toast } from './ui';
 import { clashes, type Clash } from '../lib/clash';
+import { avoidHits } from '../lib/avoid';
+import { canReadBarcodes, digits, lookUpBeauty, readBarcode, type BeautyProduct } from '../lib/barcode';
 
 /** 💄 Beauty pieces. Each is also drawn in the Beauty guide with made-up products. */
 
@@ -15,8 +17,9 @@ const VERDICT: Record<Verdict, { label: string; icon: string; cls: string }> = {
   avoid: { label: 'Not for you', icon: '❌', cls: 'bg-red-500/15 text-red-700 dark:text-red-300' },
 };
 
-export function VerdictBadge({ v, small }: { v: Verdict; small?: boolean }) {
-  const x = VERDICT[v];
+export function VerdictBadge({ v, small, free }: { v: Verdict; small?: boolean; free?: boolean }) {
+  // A free barcode check only knows your avoid list: "Not for you" when it matched, else just "Free check".
+  const x = free && v !== 'avoid' ? { label: 'Free check', icon: '🏷️', cls: 'bg-stone-500/15 text-stone-700 dark:text-stone-300' } : VERDICT[v];
   return <span className={`inline-flex shrink-0 items-center gap-1 rounded-full font-extrabold ${x.cls} ${small ? 'px-2 py-0.5 text-[11px]' : 'px-3 py-1 text-sm'}`}><span aria-hidden="true">{x.icon}</span>{x.label}</span>;
 }
 
@@ -40,6 +43,7 @@ export function ScoreRing({ score, verdict, size = 84 }: { score: number; verdic
 /** The full answer for one product. */
 export function BeautyResult({ r, photo }: { r: Omit<BeautyCheck, 'id' | 'createdAt'>; photo?: string }) {
   const [all, setAll] = useState(false);
+  if (r.free) return <FreeResult r={r} photo={photo} />;
   const hits = r.avoidHits.map((h) => h.toLowerCase());
   return (
     <div className="space-y-3">
@@ -71,13 +75,72 @@ export function BeautyResult({ r, photo }: { r: Omit<BeautyCheck, 'id' | 'create
       )}
       {r.ingredients.length > 0 && (
         <div className="text-sm">
-          <button className="btn-ghost -ml-2 text-xs" onClick={() => setAll((o) => !o)} aria-expanded={all}>{all ? 'Hide' : 'Show'} the {r.ingredients.length} ingredients {r.ingredientsFrom === 'label' ? '(read from the label)' : '(the usual formula: check your label)'}</button>
-          {all && <p className="rise mt-1 leading-relaxed muted">{r.ingredients.map((x, i) => <span key={i} className={hits.some((h) => h.startsWith(x.toLowerCase())) ? 'font-bold text-red-700 dark:text-red-300' : ''}>{x}{i < r.ingredients.length - 1 ? ', ' : ''}</span>)}</p>}
+          <button className="btn-ghost -ml-2 text-xs" onClick={() => setAll((o) => !o)} aria-expanded={all}>{all ? 'Hide' : 'Show'} the {r.ingredients.length} ingredients {r.ingredientsFrom === 'label' ? '(read from the label)' : r.ingredientsFrom === 'database' ? '(from Open Beauty Facts)' : '(the usual formula: check your label)'}</button>
+          {all && <Ingredients list={r.ingredients} hits={hits} />}
         </div>
       )}
+      {r.ingredientsFrom === 'database' && <ObfCredit code={r.code} />}
       {r.ingredientsFrom === 'none' && <p className="text-xs muted">No ingredient list was visible: add a photo of the back of the product for a surer answer.</p>}
     </div>
   );
+}
+
+const Ingredients = ({ list, hits }: { list: string[]; hits: string[] }) => (
+  <p className="rise mt-1 leading-relaxed muted">{list.map((x, i) => <span key={i} className={hits.some((h) => h.startsWith(x.toLowerCase())) ? 'font-bold text-red-700 dark:text-red-300' : ''}>{x}{i < list.length - 1 ? ', ' : ''}</span>)}</p>
+);
+
+/** Open Beauty Facts asks to be credited (its data is under the Open Database License). */
+export const ObfCredit = ({ code }: { code?: string }) => (
+  <p className="text-[11px] muted">Product data: <a className="underline" href={code ? `https://world.openbeautyfacts.org/product/${code}` : 'https://world.openbeautyfacts.org'} target="_blank" rel="noreferrer">Open Beauty Facts</a>, free and open (ODbL).</p>
+);
+
+/**
+ * 🏷️ The free barcode check (no AI): the product from Open Beauty Facts, your avoid list against its ingredients
+ * (a match = Not for you, always) and the full list. The mixing check is drawn next to it.
+ */
+export function FreeResult({ r, photo }: { r: Omit<BeautyCheck, 'id' | 'createdAt'>; photo?: string }) {
+  const [all, setAll] = useState(false);
+  const hits = r.avoidHits.map((h) => h.toLowerCase());
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        {photo ? <img src={photo} alt="The product" className="h-20 w-20 shrink-0 rounded-2xl bg-white object-contain" /> : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl text-3xl" style={{ background: 'var(--trk)' }} aria-hidden="true">🧴</span>}
+        <div className="min-w-0 flex-1">
+          <p className="label">{r.category}{r.brand ? ` · ${r.brand}` : ''}</p>
+          <p className="font-display text-lg font-semibold leading-snug">{r.product || 'Unnamed product'}</p>
+          {r.code && <p className="num text-xs muted">🏷️ {r.code}</p>}
+        </div>
+      </div>
+      {r.avoidHits.length > 0 ? (
+        <div className="rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
+          <p className="font-bold"><VerdictBadge v="avoid" small /> On your avoid list</p>
+          <p className="mt-1">{r.avoidHits.join(', ')}</p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
+          <p className="font-bold">✅ Nothing from your avoid list</p>
+          <p className="mt-1 text-xs opacity-80">Checked word by word in the {r.ingredients.length} ingredients. Whether it suits your skin type is what the AI check adds.</p>
+        </div>
+      )}
+      <div className="text-sm">
+        <button className="btn-ghost -ml-2 text-xs" onClick={() => setAll((o) => !o)} aria-expanded={all}>{all ? 'Hide' : 'Show'} the {r.ingredients.length} ingredients (from Open Beauty Facts)</button>
+        {all && <Ingredients list={r.ingredients} hits={hits} />}
+      </div>
+      <ObfCredit code={r.code} />
+    </div>
+  );
+}
+
+/** A product found by barcode → the free check (avoid list, never the AI). */
+export function freeCheck(p: BeautyProduct, b: Beauty): Omit<BeautyCheck, 'id' | 'createdAt'> {
+  const hits = avoidHits(b.avoid, p.ingredients);
+  if (b.fragranceFree) for (const h of avoidHits(['Fragrance'], p.ingredients)) if (!hits.includes(h)) hits.push(h);
+  return {
+    brand: p.brand, product: p.name, category: p.category, verdict: hits.length ? 'avoid' : 'ok', score: hits.length ? 2 : 5,
+    summary: hits.length ? `It has ${hits.join(', ')}, which is on your avoid list.` : 'Nothing from your avoid list (free barcode check, no AI).',
+    good: [], watch: [], avoidHits: hits, ingredients: p.ingredients, ingredientsFrom: 'database', howToUse: [], shade: '', pao: '',
+    code: p.code, free: true, by: 'Open Beauty Facts (free)',
+  };
 }
 
 function List({ title, items }: { title: string; items: { name: string; why: string }[] }) {
@@ -108,11 +171,11 @@ export function ShelfRow({ x, onOpen }: { x: ShelfItem; onOpen?: () => void }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold">{x.product || 'Product'}</span>
         <span className="block truncate text-xs muted">{x.brand}{x.brand && x.category ? ' · ' : ''}{x.category}</span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs"><VerdictBadge v={x.verdict} small /><span className="muted">{st.icon} {st.label}</span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs"><VerdictBadge v={x.verdict} small free={x.free} /><span className="muted">{st.icon} {st.label}</span>
           {ex && <span className={ex.left < 0 ? 'font-bold text-red-700 dark:text-red-300' : ex.left < 30 ? 'font-bold text-amber-700 dark:text-amber-300' : 'muted'}>{ex.left < 0 ? 'expired' : `use by ${shortDay(ex.date)}`}</span>}
         </span>
       </span>
-      <span className="num shrink-0 text-lg font-semibold">{x.score}</span>
+      <span className="num shrink-0 text-lg font-semibold">{x.free ? <span className="text-sm muted">🏷️</span> : x.score}</span>
     </button>
   );
 }
@@ -150,9 +213,6 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
   const [stage, setStage] = useState<'photos' | 'reading' | 'result'>('photos');
   const [r, setR] = useState<Omit<BeautyCheck, 'id' | 'createdAt'> | null>(null);
   const [err, setErr] = useState('');
-  const [status, setStatus] = useState<ShelfStatus>('checked');
-  const [opened, setOpened] = useState<{ openedOn?: string; paoMonths?: number }>({});
-  const [busy, setBusy] = useState(false);
   const cam = useRef<HTMLInputElement>(null);
   const gal = useRef<HTMLInputElement>(null);
   useEffect(() => { if (start) (start === 'camera' ? cam : gal).current?.click(); }, [start]);
@@ -165,18 +225,8 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
     setStage('reading'); setErr('');
     try {
       const x = await api.checkProduct({ images: pics.map((p) => p.ai), note: note.trim() || undefined, model });
-      setR(x); setOpened({ paoMonths: paoOf(x.pao) }); setStage('result');
+      setR(x); setStage('result');
     } catch (e) { setErr(errText(e)); setStage('photos'); }
-  };
-  const save = async () => {
-    if (!r) return;
-    setBusy(true);
-    try {
-      await st.saveShelf({ ...r, id: newId(), createdAt: new Date().toISOString(), status, ...opened }, pics[0]?.small);
-      toast('ok', 'Saved to My shelf.');
-      onClose();
-    } catch (e) { toast('err', errText(e)); }
-    setBusy(false);
   };
   const other: Provider = st.settings.ai.provider === 'gemini' ? 'claude' : 'gemini';
 
@@ -225,14 +275,138 @@ export function CheckSheet({ onClose, start }: { onClose: () => void; start?: 'c
         <div className="space-y-4">
           <BeautyResult r={r} photo={pics[0]?.small} />
           <ShelfClash r={r} />
-          <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--bd)' }}>
-            <p className="text-sm font-bold">Save to My shelf as</p>
-            <StatusPick value={status} onChange={setStatus} />
-            {(status === 'using' || status === 'loved') && <OpenedPick {...opened} onChange={setOpened} />}
-          </div>
-          <button className="btn-primary w-full !min-h-[52px] text-base" disabled={busy} onClick={() => void save()}>{busy ? <span className="spinner" /> : 'Save'}</button>
+          <SaveToShelf r={r} photo={pics[0]?.small} onDone={onClose} />
           <p className="text-center text-[11px] muted">{r.by}{r.cached ? ' · remembered (free)' : ''}{r.note ? ` · ${r.note}` : ''}
             {st.status?.keys[other] && <> · <button className="font-bold underline" onClick={() => void check(other)}>Ask {other === 'claude' ? 'Claude' : 'Gemini'} instead</button></>}
+          </p>
+          <p className="text-center text-[11px] muted">Guidance, not medical advice. New product on sensitive skin? Try it on a small patch first.</p>
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
+/** "Save to My shelf as …" (status, opened date) + Save, after a check. */
+function SaveToShelf({ r, photo, onDone, primary = true }: { r: Omit<BeautyCheck, 'id' | 'createdAt'>; photo?: string | (() => Promise<string | undefined>); onDone: () => void; primary?: boolean }) {
+  const st = useStore();
+  const [status, setStatus] = useState<ShelfStatus>('checked');
+  const [opened, setOpened] = useState<{ openedOn?: string; paoMonths?: number }>(() => ({ paoMonths: paoOf(r.pao) }));
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const small = typeof photo === 'function' ? await photo() : photo;
+      await st.saveShelf({ ...r, id: newId(), createdAt: new Date().toISOString(), status, ...opened }, small);
+      toast('ok', 'Saved to My shelf.');
+      onDone();
+    } catch (e) { toast('err', errText(e)); }
+    setBusy(false);
+  };
+  return (
+    <>
+      <div className="space-y-2 border-t pt-3" style={{ borderColor: 'var(--bd)' }}>
+        <p className="text-sm font-bold">Save to My shelf as</p>
+        <StatusPick value={status} onChange={setStatus} />
+        {(status === 'using' || status === 'loved') && <OpenedPick {...opened} onChange={setOpened} />}
+      </div>
+      <button className={`${primary ? 'btn-primary' : 'btn'} w-full !min-h-[52px] text-base`} disabled={busy} onClick={() => void save()}>{busy ? <span className="spinner" /> : 'Save'}</button>
+    </>
+  );
+}
+
+/** A small copy of the Open Beauty Facts photo to keep on My shelf (skipped if it can't be fetched). */
+const obfThumb = async (url: string) => { try { const r = await fetch(url); return r.ok ? await thumb(await r.blob()) : undefined; } catch { return undefined; } };
+
+/**
+ * 🏷️ Scan a barcode → Open Beauty Facts (free, from the phone) → the free checks (avoid list, mixing check). The AI
+ * only runs when "Ask the AI for the full check" is tapped (daily limits and the remembered answers apply).
+ */
+export function BarcodeSheet({ onClose, onPhoto }: { onClose: () => void; onPhoto: () => void }) {
+  const st = useStore();
+  const [code, setCode] = useState('');
+  const [stage, setStage] = useState<'scan' | 'looking' | 'missing' | 'found' | 'reading' | 'result'>('scan');
+  const [p, setP] = useState<BeautyProduct | null>(null);
+  const [r, setR] = useState<Omit<BeautyCheck, 'id' | 'createdAt'> | null>(null);
+  const [err, setErr] = useState('');
+  const shot = useRef<HTMLInputElement>(null);
+  const canDetect = canReadBarcodes();
+  const other: Provider = st.settings.ai.provider === 'gemini' ? 'claude' : 'gemini';
+
+  const look = async (c = code) => {
+    const n = digits(c);
+    if (n.length < 6) return;
+    setStage('looking'); setErr('');
+    try {
+      const found = await lookUpBeauty(n);
+      setP(found);
+      setStage(found && found.ingredients.length ? 'found' : 'missing');
+    } catch (e) { setErr(errText(e)); setStage('scan'); }
+  };
+  const fromPhoto = async (f?: File) => {
+    if (!f) return;
+    try {
+      const found = await readBarcode(f);
+      if (found) { setCode(found); void look(found); } else toast('err', 'No barcode found in that photo. Try closer, or type the number.');
+    } catch { toast('err', 'This browser can’t read barcodes from photos: type the number instead.'); }
+  };
+  const askAi = async (model?: Provider) => {
+    if (!p) return;
+    setStage('reading'); setErr('');
+    try {
+      setR(await api.checkProduct({ images: [], model, product: { code: p.code, brand: p.brand, name: p.name, category: p.category, ingredients: p.ingredients } }));
+      setStage('result');
+    } catch (e) { setErr(errText(e)); setStage('found'); }
+  };
+  const free = p ? freeCheck(p, st.settings.beauty) : null;
+  const keep = () => (p?.image ? obfThumb(p.image) : Promise.resolve(undefined));
+  const title = stage === 'result' ? 'For your skin' : stage === 'reading' ? 'Reading the ingredients…' : stage === 'found' ? 'Found it' : stage === 'missing' ? 'Not found' : 'Scan a barcode';
+
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <input ref={shot} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void fromPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+      {stage === 'scan' && (
+        <div className="space-y-3">
+          {canDetect && <button className="btn-primary w-full !min-h-[52px]" onClick={() => shot.current?.click()}><Icon d={ICONS.camera} /> Photo of the barcode</button>}
+          <label className="block text-sm font-semibold">{canDetect ? 'Or type the number' : 'Barcode number'}
+            <input className="input num mt-1 w-full tracking-widest" inputMode="numeric" value={code} onChange={(e) => setCode(digits(e.target.value))} placeholder="e.g. 3337875597197" onKeyDown={(e) => e.key === 'Enter' && void look()} />
+          </label>
+          <button className="btn w-full" disabled={code.length < 6} onClick={() => void look()}>Look it up</button>
+          {err && <p className="rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">{err}</p>}
+          <p className="text-xs muted">Looked up in Open Beauty Facts, a free public database: no AI, no cost. Your avoid list and the mixing check run on the ingredients it lists.</p>
+        </div>
+      )}
+      {stage === 'looking' && <div className="space-y-3 py-2"><p className="text-sm muted"><span className="spinner" /> Looking up {code}…</p><Skeleton rows={2} label="Looking it up" /></div>}
+      {stage === 'missing' && (
+        <div className="space-y-3">
+          <Empty icon="🔍">{p ? <>Open Beauty Facts knows <b>{[p.brand, p.name].filter(Boolean).join(' ') || 'this product'}</b>, but not its ingredients yet.</> : <>Barcode <span className="num">{code}</span> isn’t in Open Beauty Facts yet.</>} Snap the product and its ingredient list instead.</Empty>
+          <button className="btn-primary w-full !min-h-[52px]" onClick={onPhoto}><Icon d={ICONS.camera} /> Check it with photos</button>
+          <button className="btn w-full" onClick={() => { setCode(''); setP(null); setStage('scan'); }}>Another barcode</button>
+          <ObfCredit />
+        </div>
+      )}
+      {stage === 'found' && free && (
+        <div className="space-y-4">
+          <FreeResult r={free} photo={p?.image} />
+          <ShelfClash r={free} />
+          {err && (
+            <div className="rounded-2xl border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200">
+              <p>{err}</p>
+              {st.status?.keys[other] && <button className="btn mt-2 !min-h-[38px] text-xs" onClick={() => void askAi(other)}>Try {other === 'claude' ? 'Claude' : 'Gemini'} this once</button>}
+            </div>
+          )}
+          <button className="btn-primary w-full !min-h-[52px] text-base" onClick={() => void askAi()}>✨ Ask the AI for the full check</button>
+          <p className="-mt-2 text-center text-[11px] muted">Is it right for your skin type and concerns, what helps, what to watch. 1 AI check (free if asked before).</p>
+          <SaveToShelf r={free} photo={keep} onDone={onClose} primary={false} />
+        </div>
+      )}
+      {stage === 'reading' && <div className="space-y-3 py-2"><p className="text-sm muted"><span className="spinner" /> Matching the ingredients to your skin…</p><Skeleton rows={3} label="Reading the ingredients" /></div>}
+      {stage === 'result' && r && (
+        <div className="space-y-4">
+          <BeautyResult r={r} photo={p?.image} />
+          <ShelfClash r={r} />
+          <SaveToShelf r={r} photo={keep} onDone={onClose} />
+          <p className="text-center text-[11px] muted">{r.by}{r.cached ? ' · remembered (free)' : ''}{r.note ? ` · ${r.note}` : ''}
+            {st.status?.keys[other] && <> · <button className="font-bold underline" onClick={() => void askAi(other)}>Ask {other === 'claude' ? 'Claude' : 'Gemini'} instead</button></>}
           </p>
           <p className="text-center text-[11px] muted">Guidance, not medical advice. New product on sensitive skin? Try it on a small patch first.</p>
         </div>
@@ -370,7 +544,7 @@ export function ClashList({ list, empty }: { list: Clash[]; empty?: string }) {
 }
 
 /** The product being checked against what you use now. */
-function ShelfClash({ r }: { r: Pick<ShelfItem, 'product' | 'ingredients' | 'category'> }) {
+export function ShelfClash({ r }: { r: Pick<ShelfItem, 'product' | 'ingredients' | 'category'> }) {
   const st = useStore();
   const using = st.shelf.filter((x) => x.status === 'using' || x.status === 'loved');
   const list = clashes(using, { ...r, id: 'new' });

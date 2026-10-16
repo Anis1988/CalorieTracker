@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, errText, newId } from '../lib/api';
 import { forAi, thumb } from '../lib/image';
+import { canReadBarcodes, digits, readBarcode } from '../lib/barcode';
 import { addDays, nowTime, todayStr } from '../lib/date';
 import { useStore } from '../lib/store';
 import { mealAt, kcalText, sum } from '../lib/nutrition';
@@ -267,19 +268,18 @@ function Barcode({ onFound }: { onFound: (r: Analysis) => void }) {
   const [grams, setGrams] = useState(100);
   const [product, setProduct] = useState<{ name: string; per100: Omit<Food, 'name' | 'portion' | 'grams' | 'confidence'>; serving?: number } | null>(null);
   const shot = useRef<HTMLInputElement>(null);
-  const canDetect = typeof window !== 'undefined' && 'BarcodeDetector' in window;
+  const canDetect = canReadBarcodes();
 
   const fromPhoto = async (f?: File) => {
     if (!f) return;
     try {
-      const Det = (window as unknown as { BarcodeDetector: new (o: object) => { detect: (i: ImageBitmapSource) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-      const found = await new Det({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] }).detect(await createImageBitmap(f));
-      if (found[0]?.rawValue) { setCode(found[0].rawValue); void look(found[0].rawValue); } else toast('err', 'No barcode found in that photo. Try closer, or type the number.');
+      const found = await readBarcode(f);
+      if (found) { setCode(found); void look(found); } else toast('err', 'No barcode found in that photo. Try closer, or type the number.');
     } catch { toast('err', 'This browser can’t read barcodes from photos: type the number instead.'); }
   };
 
   const look = async (c = code) => {
-    const n = c.replace(/\D/g, '');
+    const n = digits(c);
     if (n.length < 6) return;
     setBusy(true);
     try {

@@ -40,7 +40,7 @@ export const api = {
   savePantry: (pantry: string[]) => call<{ ok: true }>('/api/cooking', send('POST', { pantry })),
   saveShopping: (shopping: ShopItem[]) => call<{ ok: true }>('/api/cooking', send('POST', { shopping })),
   shelf: () => call<{ shelf: ShelfItem[] }>('/api/beauty'),
-  checkProduct: (b: { images: string[]; note?: string; model?: Provider }) => call<Omit<BeautyCheck, 'id' | 'createdAt'>>('/api/beauty', send('POST', { check: b })),
+  checkProduct: (b: { images: string[]; note?: string; model?: Provider; product?: { code: string; brand: string; name: string; category: string; ingredients: string[] } }) => call<Omit<BeautyCheck, 'id' | 'createdAt'>>('/api/beauty', send('POST', { check: b })),
   saveShelf: (item: ShelfItem, photo?: string) => call<{ item: ShelfItem }>('/api/beauty', send('POST', { item, photo })),
   deleteShelf: (id: string) => call<{ ok: true }>(`/api/beauty?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
   deleteFavorite: (id: string) => call<{ ok: true }>(`/api/body?favorite=${id}`, { method: 'DELETE' }),

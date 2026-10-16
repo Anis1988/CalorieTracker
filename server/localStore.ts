@@ -26,7 +26,8 @@ export class LocalStore {
     return (this.live(key)?.v as Record<string, unknown> | undefined) ?? {};
   }
   async get<T>(key: string): Promise<T | null> { return (this.live(key)?.v as T) ?? null; }
-  async set(key: string, v: unknown, opts?: { ex?: number }) { this.data[key] = { v, exp: opts?.ex ? Date.now() + opts.ex * 1000 : undefined }; this.save(); return 'OK'; }
+  async mget<T>(...keys: string[]): Promise<T> { return keys.map((k) => this.live(k)?.v ?? null) as T; }
+  async set(key: string, v: unknown, opts?: { ex?: number; nx?: boolean }) { if (opts?.nx && this.live(key)) return null; this.data[key] = { v, exp: opts?.ex ? Date.now() + opts.ex * 1000 : undefined }; this.save(); return 'OK'; }
   async del(...keys: string[]) { for (const k of keys) delete this.data[k]; this.save(); return keys.length; }
   async scan(_c: unknown, o: { match: string }) { const pre = o.match.replace(/\*$/, ''); return ['0', Object.keys(this.data).filter((k) => k.startsWith(pre))]; }
   async incr(key: string) { const n = Number(this.live(key)?.v ?? 0) + 1; this.data[key] = { ...this.data[key], v: n }; this.save(); return n; }

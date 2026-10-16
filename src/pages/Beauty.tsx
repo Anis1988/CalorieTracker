@@ -3,8 +3,8 @@ import { useStore } from '../lib/store';
 import { shortDay } from '../lib/date';
 import { avoidHits } from '../lib/avoid';
 import { clashes } from '../lib/clash';
-import { SHELF_STATUS, type BeautyCheck, type ShelfItem, type ShelfStatus } from '../lib/types';
-import { BeautyResult, CheckSheet, ClashList, ShelfRow, ShelfSheet, SkinProfile, profileLine, recentChecks, routine, soonExpiring } from '../components/Beauty';
+import { DEFAULT_SETTINGS, SHELF_STATUS, type BeautyCheck, type ShelfItem, type ShelfStatus } from '../lib/types';
+import { BarcodeSheet, BeautyResult, CheckSheet, FreeResult, freeCheck, ClashList, ShelfRow, ShelfSheet, SkinProfile, profileLine, recentChecks, routine, soonExpiring } from '../components/Beauty';
 import { Empty, Fold, ICONS, Icon } from '../components/ui';
 
 /** 💄 Check (Beauty's home): your skin in one line, the big button, recent checks, what's expiring. */
@@ -12,6 +12,7 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
   const st = useStore();
   const b = st.settings.beauty;
   const [open, setOpen] = useState<ShelfItem | null>(null);
+  const [bar, setBar] = useState(false);
   const recent = recentChecks(st.shelf).slice(0, 6);
   const expiring = soonExpiring(st.shelf).slice(0, 3);
   const counts = { good: st.shelf.filter((x) => x.verdict === 'good').length, avoid: st.shelf.filter((x) => x.verdict === 'avoid').length };
@@ -24,7 +25,8 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
           <button className="btn-primary !min-h-[76px] flex-col !gap-1 !rounded-[22px] text-[14px]" onClick={() => setCheck('camera')}><Icon d={ICONS.camera} className="h-6 w-6" /> Check a product</button>
           <button className="btn !min-h-[76px] flex-col !gap-1 !rounded-[22px]" onClick={() => setCheck('gallery')}><Icon d={ICONS.image} className="h-6 w-6" /> From gallery</button>
         </div>
-        <p className="mt-2 text-xs muted">Snap the front and the ingredient list: you’ll see if it suits your skin, what helps, and what to watch.</p>
+        {b.barcode && <button className="btn mt-2 w-full" onClick={() => setBar(true)}><Icon d={ICONS.barcode} /> Scan a barcode <span className="text-xs font-normal muted">free</span></button>}
+        <p className="mt-2 text-xs muted">Snap the front and the ingredient list: you’ll see if it suits your skin, what helps, and what to watch.{b.barcode ? ' Or scan the barcode for a free check of your avoid list.' : ''}</p>
       </section>
 
       {st.shelf.length > 0 && (
@@ -49,6 +51,7 @@ export function BeautyHome({ check, setCheck, go }: { check: 'pick' | 'camera' |
 
       {check && <CheckSheet start={check === 'pick' ? undefined : check} onClose={() => setCheck(null)} />}
       {open && <ShelfSheet x={open} onClose={() => setOpen(null)} />}
+      {bar && <BarcodeSheet onClose={() => setBar(false)} onPhoto={() => { setBar(false); setCheck('camera'); }} />}
     </div>
   );
 }
@@ -124,6 +127,7 @@ const EX: Omit<BeautyCheck, 'id' | 'createdAt'> = {
   avoidHits: [], ingredients: ['Aqua', 'Glycerin', 'Butyrospermum Parkii Butter', 'Ceramide NP', 'Cholesterol', 'Phytosphingosine'], ingredientsFrom: 'label',
   howToUse: ['Morning and night on damp skin', 'Under sunscreen in the morning'], shade: '', pao: '12M', by: 'Gemini Flash',
 };
+const BARCODE_INGS = ['Aqua', 'Glycerin', 'Niacinamide', 'Squalane', 'Panthenol', 'Parfum', 'Sodium Hyaluronate'];
 const BAD = ['Aqua', 'Alcohol Denat.', 'Parfum', 'Salicylic Acid'];
 const EX2: Omit<BeautyCheck, 'id' | 'createdAt'> = {
   ...EX, brand: 'Example Glow', product: 'Clarifying Toner', category: 'Toner', verdict: 'avoid', score: 2,
@@ -162,6 +166,13 @@ export function BeautyGuide() {
       <Fold icon="📸" title="Checking a product">
         <P>Tap <b>Check a product</b> (or the big camera button). Snap the front, then the <b>ingredient list</b> on the back: with it the answer is much surer. Up to 3 photos. You can add a note, like a shade number or “for under my eyes”.</P>
         <P>You get: what helps your skin (💗), what to watch out for (⚠️), how to use it, shade advice for foundation and concealer, and the full ingredient list. If there’s no ingredient list in the photos, the AI uses the product’s usual formula and says so.</P>
+      </Fold>
+
+      <Fold icon="🏷️" title="Scan a barcode (free)">
+        <P>On <b>Check</b>, tap <b>Scan a barcode</b>: take a photo of the barcode (on most Android phones) or type its number. It’s looked up in <b>Open Beauty Facts</b>, a free public database of beauty products. No AI, no cost.</P>
+        <P>If it’s there with its ingredients, you see the product, whether anything from <b>your avoid list</b> is in it (then it’s always <b>Not for you</b>), and the mixing check with what you use. Want to know if it suits your skin type too? Tap <b>Ask the AI for the full check</b>: that’s 1 AI check, using the ingredient list (no photo needed), and the same product is remembered.</P>
+        <P>Not in the database, or no ingredients listed? You’re offered the photo check instead. Either way you can save it to My shelf. Turn the button off in Settings → Barcodes.</P>
+        <Example caption="Made-up product found by its barcode, when you avoid fragrance."><FreeResult r={freeCheck({ code: '0000000000000', name: 'Example Calm Gel Cream', brand: 'Example Skin', category: 'Moisturizer', image: '', ingredients: BARCODE_INGS, link: '' }, { ...DEFAULT_SETTINGS.beauty, avoid: ['Fragrance'] })} /></Example>
       </Fold>
 
       <Fold icon="🚫" title="Ingredients to avoid">
