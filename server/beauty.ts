@@ -46,10 +46,17 @@ const profileText = (s: Settings) => {
 
 const VERDICT_RANK: Record<Verdict, number> = { avoid: 0, ok: 1, good: 2 };
 
-export async function checkProduct(i: { images: { mime: string; data: string }[]; note?: string; model?: Provider }, s: Settings): Promise<Omit<BeautyCheck, 'id' | 'createdAt'>> {
-  const prompt = `My skin profile:\n${profileText(s)}${i.note ? `\nMy note: ${i.note}` : ''}\nHere ${i.images.length > 1 ? 'are photos' : 'is a photo'} of the product. Is it good for me?`;
-  const r = await ask({ schema: Answer, system: SYSTEM, prompt, images: i.images, model: i.model, cacheKey: ['beauty', i.images.map((x) => x.data), i.note ?? '', s.beauty] },
+/** A product found by its barcode on Open Beauty Facts (name + ingredient list, no photo needed). */
+export interface KnownProduct { code: string; brand: string; name: string; category: string; ingredients: string[] }
+
+export async function checkProduct(i: { images: { mime: string; data: string }[]; note?: string; model?: Provider; product?: KnownProduct }, s: Settings): Promise<Omit<BeautyCheck, 'id' | 'createdAt'>> {
+  const k = i.product;
+  const prompt = `My skin profile:\n${profileText(s)}${i.note ? `\nMy note: ${i.note}` : ''}\n${k
+    ? `The product (from its barcode, on Open Beauty Facts): ${[k.brand, k.name].filter(Boolean).join(' ') || 'unknown name'}${k.category && k.category !== 'Other' ? ` (${k.category})` : ''}.\nIngredient list (INCI, as listed): ${k.ingredients.join(', ')}\nUse this ingredient list (ingredientsFrom = "label"). Is it good for me?`
+    : `Here ${i.images.length > 1 ? 'are photos' : 'is a photo'} of the product. Is it good for me?`}`;
+  const r = await ask({ schema: Answer, system: SYSTEM, prompt, images: i.images, model: i.model, cacheKey: ['beauty', k ? ['code', k.code, k.ingredients] : i.images.map((x) => x.data), i.note ?? '', s.beauty] },
     s, (raw) => clean(raw), (x) => !!(x.product || x.brand));
+  if (k) Object.assign(r, { brand: r.brand || k.brand, product: r.product || k.name, ingredients: k.ingredients, ingredientsFrom: 'database', code: k.code });
   // The free check, after the AI: your avoid list against the ingredients. A match can't be turned into "good".
   const hits = avoidHits(s.beauty.avoid, r.ingredients);
   if (s.beauty.fragranceFree) for (const h of avoidHits(['Fragrance'], r.ingredients)) if (!hits.includes(h)) hits.push(h);

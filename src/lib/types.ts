@@ -77,7 +77,7 @@ export interface Settings {
     tips: boolean;
   };
   photos: { keep: boolean; days: number };
-  display: { theme: 'auto' | 'light' | 'dark'; weekStart: 0 | 1; healthScore: boolean; macros: boolean };
+  display: { theme: 'auto' | 'light' | 'dark'; weekStart: 0 | 1; healthScore: boolean; macros: boolean; timeZone: string }; // timeZone: your phone's, kept up to date by the app (for “today” on the server)
   water: { on: boolean; step: number };
   beauty: Beauty;
   cooking: Cooking;
@@ -153,6 +153,7 @@ export interface Beauty {
   fragranceFree: boolean;
   vegan: boolean;
   pregnancy: boolean;
+  barcode: boolean; // 🏷️ look up barcodes on Open Beauty Facts (free) on the Check screen
 }
 export const SKIN_TYPES: { id: SkinType; label: string; hint: string }[] = [
   { id: 'dry', label: 'Dry', hint: 'Feels tight, flaky patches' },
@@ -187,10 +188,12 @@ export interface BeautyCheck {
   watch: { name: string; why: string }[];
   avoidHits: string[]; // from your avoid list (free text check, the AI can't override it)
   ingredients: string[];
-  ingredientsFrom: 'label' | 'known' | 'none';
+  ingredientsFrom: 'label' | 'known' | 'none' | 'database'; // database = Open Beauty Facts (barcode)
   howToUse: string[];
   shade: string; // shade advice for face makeup, else ''
   pao: string; // period after opening on the jar, e.g. "12M", else ''
+  code?: string; // barcode, when found on Open Beauty Facts
+  free?: boolean; // only the free checks (barcode, no AI yet)
   by: string;
   cached?: boolean;
   note?: string;
@@ -213,10 +216,10 @@ export const DEFAULT_SETTINGS: Settings = {
   meals: { breakfastUntil: '10:30', lunchUntil: '15:30', dinnerUntil: '21:30' },
   ai: { provider: 'gemini', fallback: true, geminiModel: 'gemini-flash-latest', claudeModel: 'claude-sonnet-5-5', effort: 'low', geminiDailyLimit: 100, claudeDailyLimit: 10, claudeUnlimited: false, rememberDays: 7, askNote: false, review: true, tips: true },
   photos: { keep: true, days: 90 },
-  display: { theme: 'auto', weekStart: 1, healthScore: true, macros: true },
+  display: { theme: 'auto', weekStart: 1, healthScore: true, macros: true, timeZone: '' },
   water: { on: true, step: 250 },
   cooking: { on: true, diet: '', allergies: [], dislikes: [], tools: ['Oven', 'Stove', 'Microwave'], servings: 2, maxTime: 0, skill: 'any', count: 6, units: 'metric', staples: ['Salt', 'Pepper', 'Olive oil', 'Water'], fitDay: false, pictures: 'opened', aiPicsPerDay: 10, imageModel: 'gemini-2.5-flash-image' },
-  beauty: { on: true, skinType: 'normal', sensitive: false, concerns: [], avoid: [], tone: '', undertone: '', fragranceFree: false, vegan: false, pregnancy: false },
+  beauty: { on: true, skinType: 'normal', sensitive: false, concerns: [], avoid: [], tone: '', undertone: '', fragranceFree: false, vegan: false, pregnancy: false, barcode: true },
 };
 
 /** Settings saved by an older version: anything missing gets its default. */

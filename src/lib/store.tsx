@@ -86,6 +86,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setWeights(b.weights);
       setFavorites(b.favorites);
       try { localStorage.setItem('ct.theme', s.settings.display.theme); } catch { /* private mode */ }
+      // Your phone's time zone, so the server knows which day is "today" for you (the My apps summary).
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz && s.settings.display.timeZone !== tz) void api.saveSettings({ ...s.settings, display: { ...s.settings.display, timeZone: tz } }).then((r) => setSettings(r.settings)).catch(() => undefined);
       loaded.current = null;
       const t = todayStr();
       const r = await api.days(addDays(t, -40), addDays(t, 1));

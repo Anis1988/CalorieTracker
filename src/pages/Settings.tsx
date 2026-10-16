@@ -25,11 +25,14 @@ export function Settings({ space = 'food' }: { space?: 'food' | 'beauty' | 'cook
     <div className="mx-auto max-w-xl space-y-3">
       <h1 className="text-2xl font-semibold">Settings</h1>
 
-      {space === 'beauty' ? (
+      {space === 'beauty' ? (<>
         <Fold icon="🌸" title="Your skin" subtitle={profileLine(s.beauty)}>
           <SkinProfile />
         </Fold>
-      ) : space === 'cooking' ? <KitchenFold /> : (<>
+        <Fold icon="🏷️" title="Barcodes" subtitle={s.beauty.barcode ? 'Open Beauty Facts' : 'Off'}>
+          <Field label="Look up barcodes on Open Beauty Facts" hint="A “Scan a barcode” button on Check. Free, no AI: your avoid list and the mixing check run on the ingredients it lists."><Toggle on={s.beauty.barcode} onChange={(v) => set('beauty', { barcode: v })} label="Look up barcodes on Open Beauty Facts" /></Field>
+        </Fold>
+      </>) : space === 'cooking' ? <KitchenFold /> : (<>
       <Fold icon="👤" title="About you" subtitle={`${s.profile.age} y · ${weightNum(s.profile.weightKg, u)} ${u.weight} · ${s.profile.goal === 'lose' ? 'losing' : s.profile.goal === 'gain' ? 'gaining' : 'keeping'} weight`}>
         <Field label="Sex" hint="Used only for the calorie maths."><Seg label="Sex" options={[['male', 'Male'], ['female', 'Female']]} value={s.profile.sex} onChange={(v) => set('profile', { sex: v })} className="w-44" /></Field>
         <Field label="Age"><NumberBox label="Age" value={s.profile.age} min={12} max={100} unit="years" onChange={(n) => set('profile', { age: n })} /></Field>

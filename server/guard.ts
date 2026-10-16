@@ -39,11 +39,16 @@ function sameOrigin(req: Request): boolean {
   }
 }
 
+/** The access code check alone (APP_ACCESS_TOKEN, header x-access-token): null when fine, else the error reply. */
+export function needCode(req: Request, extra: Record<string, string> = {}): Response | null {
+  const token = process.env.APP_ACCESS_TOKEN;
+  if (!token) return json({ error: 'Set APP_ACCESS_TOKEN in Vercel first (Settings → Environment Variables), then redeploy.' }, 503, extra);
+  if (!safeEqual(req.headers.get('x-access-token') ?? '', token)) return json({ error: 'Missing or wrong access code.' }, 401, extra);
+  return null;
+}
+
 /** For the app's own calls: same origin + APP_ACCESS_TOKEN (required) + rate limit. */
 export function guard(req: Request, name: string, maxPerMinute = 30): Response | null {
   if (!sameOrigin(req)) return json({ error: 'Cross-origin requests are not allowed.' }, 403);
-  const token = process.env.APP_ACCESS_TOKEN;
-  if (!token) return json({ error: 'Set APP_ACCESS_TOKEN in Vercel first (Settings → Environment Variables), then redeploy.' }, 503);
-  if (!safeEqual(req.headers.get('x-access-token') ?? '', token)) return json({ error: 'Missing or wrong access code.' }, 401);
-  return rateLimited(req, name, maxPerMinute);
+  return needCode(req) ?? rateLimited(req, name, maxPerMinute);
 }

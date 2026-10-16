@@ -15,7 +15,8 @@ import { LocalStore } from './localStore.js';
  *   ct:pantry / ct:shop    lists (🍳 what you have / what to buy)
  *   ct:photo:<id>          small copy of a meal photo (kept Settings → Photos days)
  *   ct:cache:<hash>        an AI answer (the same photo/words are never paid for twice)
- *   ct:ai:<day>:<provider> AI reads today
+ *   ct:ai:<day>:<provider> AI reads that day (gemini / claude / image), kept 100 days
+ *   ct:ai:since            first day the counters were kept 100 days (week/month in /api/summary count from it)
  */
 let redis: Redis | null | undefined;
 export function db(): Redis | null {
@@ -143,7 +144,18 @@ export async function countAi(p: Provider | 'image') {
   const r = need();
   const k = `ct:ai:${today()}:${p}`;
   await r.incr(k);
-  await r.expire(k, 3 * 86400);
+  await r.expire(k, 100 * 86400); // kept 100 days for the My apps summary (week / month)
+  await r.set('ct:ai:since', today(), { nx: true });
+}
+/** AI reads per day and provider (for /api/summary), plus the first day the counters were kept that long. */
+export async function aiHistory(days: string[]): Promise<{ counts: Record<string, Record<Provider | 'image', number>>; since: string | null }> {
+  const r = need();
+  const kinds = ['gemini', 'claude', 'image'] as const;
+  const keys = days.flatMap((d) => kinds.map((p) => `ct:ai:${d}:${p}`));
+  const [vals, since] = await Promise.all([keys.length ? r.mget<(number | string | null)[]>(...keys) : Promise.resolve([]), r.get<string>('ct:ai:since')]);
+  const counts: Record<string, Record<Provider | 'image', number>> = {};
+  days.forEach((d, i) => { counts[d] = { gemini: Number(vals[i * 3]) || 0, claude: Number(vals[i * 3 + 1]) || 0, image: Number(vals[i * 3 + 2]) || 0 }; });
+  return { counts, since: since ?? null };
 }
 export const getCache = async <T>(key: string) => (await db()?.get<T>(`ct:cache:${key}`)) ?? null;
 export const putCache = async (key: string, v: unknown, days: number) => { if (days > 0) await db()?.set(`ct:cache:${key}`, v, { ex: days * 86400 }); };
