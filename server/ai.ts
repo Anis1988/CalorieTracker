@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import type { Analysis, Food, Provider, Settings } from '../src/lib/types.js';
 import { modelName } from '../src/lib/types.js';
 import { aiUsed, countAi, getCache, putCache } from './store.js';
+import { stopIfPaused } from './masterSwitch.js';
 
 /**
  * 📸 A food photo (or a few words) → each food and drink with its portion and nutrition.
@@ -143,6 +144,7 @@ export async function ask<T extends z.ZodTypeAny, R>(q: Ask<T> & { cacheKey: unk
   const key = createHash('sha256').update(JSON.stringify(q.cacheKey)).digest('hex').slice(0, 40);
   const hit = await getCache<Out>(key);
   if (hit && !q.model) return { ...hit, cached: true };
+  await stopIfPaused('ai'); // 🎛️ Master (the owner's apps dashboard) can switch the AI off: remembered answers still work
   const first = q.model ?? s.ai.provider;
   const order: Provider[] = q.model || !s.ai.fallback ? [first] : [first, first === 'gemini' ? 'claude' : 'gemini'];
   const why: string[] = [];

@@ -101,6 +101,7 @@ export function Guide() {
         <P>The AI you pick in Settings → AI is used everywhere (Calories, Beauty and Cooking). <b>Gemini</b> (Google) is free within Google’s daily allowance. <b>Claude</b> is the paid backup: about 1–2 cents a photo with Sonnet. If Gemini is over its daily limit, isn’t set up or fails, Claude takes over (turn this off in Settings → AI). You can switch which one goes first.</P>
         <P>Each AI has a daily limit you set (Settings → AI), so the cost can’t run away. The same photo or words are remembered for 7 days and never paid for twice. Barcodes (food and beauty), favorites and recent meals never use the AI.</P>
         <P><b>My apps</b> page: your page that shows all your apps can show a short card for this one (calories today against your goal, your last meal, a beauty or cooking note, and how many AI reads were used today, this week and this month with a rough cost). It uses the same access code and only reads, never changes anything.</P>
+        <P><b>🎛️ Master</b> (your dashboard of all your apps) can switch the AI off here and in your other apps at once. While it’s off, a new AI read or AI picture says <b>“The AI is paused from Master”</b>; barcodes, favorites, recent meals and answers already remembered still work. Turn it back on in Master: it counts here within a minute.</P>
       </Fold>
 
       <Fold icon="🫧" title="How it looks and moves">
