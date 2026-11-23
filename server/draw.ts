@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Settings } from '../src/lib/types.js';
 import { aiUsed, countAi, getCache, putCache } from './store.js';
+import { stopIfPaused } from './masterSwitch.js';
 
 /**
  * 🎨 An AI picture of the exact dish (Gemini's image model, GEMINI_API_KEY; about 4 cents a picture). Made once per
@@ -12,6 +13,7 @@ export const drawKey = (title: string, summary: string) => createHash('sha256').
 export async function drawDish(d: { title: string; summary: string; ingredients: string[] }, s: Settings): Promise<{ key: string; done?: boolean; image?: string }> {
   const key = drawKey(d.title, d.summary);
   if (await getCache<true>(`draw:${key}`)) return { key, done: true };
+  await stopIfPaused('ai'); // 🎛️ paused from Master
   if (!process.env.GEMINI_API_KEY?.trim()) throw new Error('AI pictures need GEMINI_API_KEY in Vercel');
   const limit = s.cooking.aiPicsPerDay;
   if ((await aiUsed('image')) >= limit) throw new Error(`Today’s AI pictures are used up (${limit}, Settings → Cooking)`);
